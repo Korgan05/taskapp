@@ -258,41 +258,55 @@ body.modal-open {
 
 .current-date-center {
   flex: 1;
-  text-align: center;
-  position: relative;
-}
-
-.date-center-btn {
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: var(--radius-sm);
-  padding: 6px 14px;
-  cursor: pointer;
   display: flex;
   flex-direction: column;
   align-items: center;
-  transition: all 0.15s ease;
-  width: 100%;
+  justify-content: center;
 }
 
-.date-center-btn:hover {
+.date-chip-btn {
   background: var(--bg-subtle);
-  border-color: var(--border-card);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-pill);
+  padding: 6px 16px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.15s ease;
+  color: var(--text-primary);
+}
+
+.date-chip-btn:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--accent-blue);
+  box-shadow: 0 2px 10px var(--accent-blue-glow);
 }
 
 .date-main-text {
   font-family: var(--font-display);
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
   letter-spacing: -0.01em;
   color: var(--text-primary);
 }
 
+.date-chip-arrow {
+  font-size: 11px;
+  color: var(--accent-blue);
+  transition: transform 0.15s ease;
+  line-height: 1;
+}
+
+.date-chip-btn:hover .date-chip-arrow {
+  transform: translateY(1.5px);
+}
+
 .date-day-badge {
   font-size: 12px;
   font-weight: 500;
-  color: var(--text-secondary);
-  margin-top: 2px;
+  color: var(--text-muted);
+  margin-top: 4px;
 }
 
 /* Лента дней недели */
@@ -440,6 +454,34 @@ body.modal-open {
   display: block;
   font-size: 13px;
   color: var(--text-secondary);
+}
+
+.hero-actions-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.btn-receipt-action {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-card);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+
+.btn-receipt-action:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--accent-blue);
+  color: var(--accent-blue);
 }
 
 .shift-badge-pill {
@@ -1278,6 +1320,193 @@ body.modal-open {
 
 .footer-right .sep {
   margin: 0 8px;
+}
+
+/* Термочек смены (arqa style) */
+.receipt-sheet {
+  max-width: 380px;
+  padding: 16px;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+.receipt-paper {
+  background: #FFFDF0;
+  color: #1A1A1A;
+  font-family: var(--font-mono);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+  position: relative;
+  border-radius: 4px;
+}
+
+[data-theme="dark"] .receipt-paper {
+  background: #FFFDF0;
+  color: #1A1A1A;
+}
+
+.receipt-sawtooth-top,
+.receipt-sawtooth-bottom {
+  height: 10px;
+  background-size: 16px 10px;
+  background-repeat: repeat-x;
+}
+
+.receipt-sawtooth-top {
+  background-image: radial-gradient(circle at 8px 0px, transparent 6px, #FFFDF0 6px);
+}
+
+.receipt-sawtooth-bottom {
+  background-image: radial-gradient(circle at 8px 10px, transparent 6px, #FFFDF0 6px);
+}
+
+.receipt-inner {
+  padding: 16px 20px;
+}
+
+.receipt-header {
+  text-align: center;
+  margin-bottom: 12px;
+}
+
+.receipt-brand {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #0F172A;
+}
+
+.receipt-brand span {
+  color: #2563EB;
+}
+
+.receipt-title {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  margin-top: 4px;
+  color: #334155;
+}
+
+.receipt-date-line {
+  font-size: 11px;
+  color: #64748B;
+  margin-top: 2px;
+}
+
+.receipt-divider {
+  border-top: 1px dashed #CBD5E1;
+  margin: 10px 0;
+}
+
+.receipt-divider-thick {
+  border-top: 2px solid #0F172A;
+  margin: 8px 0;
+}
+
+.receipt-trips-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 160px;
+  overflow-y: auto;
+  font-size: 11px;
+}
+
+.r-trip-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.r-trip-time {
+  color: #475569;
+}
+
+.r-trip-sum {
+  font-weight: 700;
+  color: #0F172A;
+}
+
+.receipt-calc-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 11px;
+}
+
+.r-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #334155;
+}
+
+.r-row.text-danger strong {
+  color: #DC2626;
+}
+
+.r-total {
+  font-size: 13px;
+  font-weight: 800;
+  color: #0F172A;
+}
+
+.r-total-val {
+  font-size: 15px;
+  font-weight: 800;
+  color: #059669;
+}
+
+.receipt-split-line {
+  font-size: 10px;
+  color: #64748B;
+  text-align: center;
+  margin-top: 4px;
+}
+
+.receipt-footer-stamp {
+  margin-top: 14px;
+  text-align: center;
+}
+
+.barcode-lines {
+  height: 24px;
+  background: repeating-linear-gradient(
+    90deg,
+    #1E293B,
+    #1E293B 2px,
+    transparent 2px,
+    transparent 4px,
+    #1E293B 4px,
+    #1E293B 7px,
+    transparent 7px,
+    transparent 9px
+  );
+  margin-bottom: 4px;
+  opacity: 0.85;
+}
+
+.barcode-num {
+  font-size: 9px;
+  letter-spacing: 0.15em;
+  color: #64748B;
+}
+
+.receipt-thank-you {
+  font-size: 10px;
+  color: #94A3B8;
+  margin-top: 4px;
+  text-transform: uppercase;
+}
+
+.receipt-modal-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
 }
 
 @media (max-width: 680px) {

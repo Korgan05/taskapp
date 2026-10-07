@@ -53,6 +53,25 @@ def test_resend_same_trip_does_not_create_duplicate(client_with_storage):
     assert len(storage.load_all()) == 1
 
 
+def test_idempotency_key_header_support(client_with_storage):
+    """Стандартный заголовок Idempotency-Key предотвращает дублирование при повторных сетевых запросах."""
+    client, storage = client_with_storage
+    key = "idem-key-abc-123"
+
+    first = client.post("/api/trips", json=BASE_TRIP, headers={"Idempotency-Key": key})
+    assert first.status_code == 201
+    assert first.headers.get("Idempotency-Key") == key
+    assert first.json()["id"] == key
+
+    # Повторный запрос с тем же Idempotency-Key
+    replay = client.post("/api/trips", json=BASE_TRIP, headers={"Idempotency-Key": key})
+    assert replay.status_code == 200
+    assert replay.headers.get("Idempotent-Replay") == "true"
+    assert replay.headers.get("Idempotency-Key") == key
+    assert replay.json()["id"] == first.json()["id"]
+    assert len(storage.load_all()) == 1
+
+
 def test_resend_without_id_does_not_create_duplicate(client_with_storage):
     """Клиент не передал id (или перегенерировал его) — дубль ловится по данным поездки."""
     client, storage = client_with_storage

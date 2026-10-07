@@ -36,6 +36,19 @@ const el = {
   calendarGrid: $("calendar-grid"),
   calTodayBtn: $("cal-today-btn"),
 
+  openReceiptBtn: $("open-receipt-btn"),
+  receiptModal: $("receipt-modal"),
+  receiptCloseBtn: $("receipt-close-btn"),
+  receiptPrintBtn: $("receipt-print-btn"),
+  receiptDateText: $("receipt-date-text"),
+  receiptTripsTable: $("receipt-trips-table"),
+  receiptCount: $("receipt-count"),
+  receiptRevenue: $("receipt-revenue"),
+  receiptCommission: $("receipt-commission"),
+  receiptNet: $("receipt-net"),
+  receiptBreakdown: $("receipt-breakdown"),
+  receiptBarcodeCode: $("receipt-barcode-code"),
+
   summaryNet: $("summary-net"),
   summaryStatusBadge: $("summary-status-badge"),
   summaryRevenue: $("summary-revenue"),
@@ -133,7 +146,8 @@ function escapeHtml(s) {
 
 function updateScrollLock() {
   const isAnyOpen = (el.modalBackdrop && el.modalBackdrop.classList.contains("is-open")) ||
-                    (el.calendarModal && el.calendarModal.classList.contains("is-open"));
+                    (el.calendarModal && el.calendarModal.classList.contains("is-open")) ||
+                    (el.receiptModal && el.receiptModal.classList.contains("is-open"));
   document.body.classList.toggle("modal-open", isAnyOpen);
 }
 
@@ -217,7 +231,7 @@ function renderDateHeader() {
   }).replace(" г.", "");
 
   el.dateDisplayText.textContent = dateFormatted;
-  el.dateRelativeTag.textContent = `${formatRelativeLabel(d)} · нажать для календаря 📅`;
+  el.dateRelativeTag.textContent = formatRelativeLabel(d);
 
   if (el.todayBtn) {
     el.todayBtn.disabled = d === todayStr();
@@ -273,6 +287,49 @@ function closeCalendarModal() {
 }
 
 const isCalendarOpen = () => el.calendarModal && el.calendarModal.classList.contains("is-open");
+
+/* ---------------- Фирменный термочек смены (arqa style) ---------------- */
+
+const isReceiptModalOpen = () => el.receiptModal && el.receiptModal.classList.contains("is-open");
+
+function openReceiptModal() {
+  if (!state.currentDayData) return;
+  const { summary, trips } = state.currentDayData;
+  const dParts = state.currentDate.split("-");
+  el.receiptDateText.textContent = `${dParts[2]}.${dParts[1]}.${dParts[0]}`;
+  el.receiptCount.textContent = summary.trips_count;
+  el.receiptRevenue.textContent = `${formatMoney(summary.total_revenue)} ₸`;
+  el.receiptCommission.textContent = summary.total_commission > 0 ? `−${formatMoney(summary.total_commission)} ₸` : "0 ₸";
+  el.receiptNet.textContent = `${formatMoney(summary.net_payout)} ₸`;
+  el.receiptBreakdown.textContent = `Безналичные: ${formatMoney(summary.breakdown.card)} ₸ · Наличные: ${formatMoney(summary.breakdown.cash)} ₸`;
+  el.receiptBarcodeCode.textContent = `ARQA-${dParts.join("")}-SHIFT`;
+
+  el.receiptTripsTable.innerHTML = "";
+  if (!trips || trips.length === 0) {
+    el.receiptTripsTable.innerHTML = `<div style="text-align:center; color:#94A3B8; padding:8px 0; font-size:11px;">Поездок в смене нет</div>`;
+  } else {
+    trips.forEach((t, i) => {
+      const row = document.createElement("div");
+      row.className = "r-trip-item";
+      const payName = t.payment === "card" ? "карта" : "нал";
+      row.innerHTML = `
+        <span class="r-trip-time">#${i + 1} ${formatIsoTime(t.start)} (${payName})</span>
+        <span class="r-trip-sum">${formatMoney(t.amount)} ₸</span>
+      `;
+      el.receiptTripsTable.appendChild(row);
+    });
+  }
+
+  el.receiptModal.classList.add("is-open");
+  el.receiptModal.setAttribute("aria-hidden", "false");
+  updateScrollLock();
+}
+
+function closeReceiptModal() {
+  el.receiptModal.classList.remove("is-open");
+  el.receiptModal.setAttribute("aria-hidden", "true");
+  updateScrollLock();
+}
 
 function calPrevMonth() {
   if (state.calMonth === 0) {
@@ -379,6 +436,7 @@ async function loadDayData(dateStr) {
     const data = await res.json();
     if (seq !== state.loadSeq) return;
 
+    state.currentDayData = data;
     renderSummary(data.summary);
     renderTrips(data.trips);
   } catch (err) {
@@ -625,13 +683,17 @@ async function handleTripSubmit(e) {
   };
   if (idVal) payload.id = idVal;
 
+  const headers = { "Content-Type": "application/json" };
+  const idemKey = idVal || `idem-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  headers["Idempotency-Key"] = idemKey;
+
   state.submitting = true;
   el.submitTripBtn.disabled = true;
 
   try {
     const res = await fetch("/api/trips", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify(payload),
     });
     const body = await res.json().catch(() => null);
@@ -708,6 +770,16 @@ function setupEventListeners() {
     closeCalendarModal();
   });
 
+  // Модалка фирменного чека смены (arqa style)
+  el.openReceiptBtn.addEventListener("click", openReceiptModal);
+  el.receiptCloseBtn.addEventListener("click", closeReceiptModal);
+  el.receiptModal.addEventListener("click", (e) => {
+    if (e.target === el.receiptModal) closeReceiptModal();
+  });
+  el.receiptPrintBtn.addEventListener("click", () => {
+    window.print();
+  });
+
   // Модалка добавления поездки
   el.openModalBtn.addEventListener("click", openAddModal);
   el.modalCloseBtn.addEventListener("click", closeAddModal);
@@ -730,6 +802,10 @@ function setupEventListeners() {
     }
     if (isCalendarOpen()) {
       if (e.key === "Escape") closeCalendarModal();
+      return;
+    }
+    if (isReceiptModalOpen()) {
+      if (e.key === "Escape") closeReceiptModal();
       return;
     }
     if (/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName)) return;

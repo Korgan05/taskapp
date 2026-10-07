@@ -1,7 +1,7 @@
 from datetime import date
-from typing import List
+from typing import List, Optional
 
-from fastapi import APIRouter, HTTPException, Query, Response, status
+from fastapi import APIRouter, Header, HTTPException, Query, Response, status
 
 from app.models import DayDetailsResponse, DaySummary, Trip, TripCreate
 from app.services import TripIdConflict, TripService
@@ -45,7 +45,15 @@ def get_routes(storage: TripStorage) -> APIRouter:
             422: {"description": "Ошибка валидации (сумма ≤ 0, окончание не позже начала и т.д.)"},
         },
     )
-    def add_trip(trip_data: TripCreate, response: Response):
+    def add_trip(
+        trip_data: TripCreate,
+        response: Response,
+        idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key", description="Ключ идемпотентности"),
+    ):
+        # Если передан стандартный HTTP-заголовок Idempotency-Key и id в теле не указан — связываем их
+        if idempotency_key and not trip_data.id:
+            trip_data.id = idempotency_key.strip()
+
         # Проверка и запись под одной блокировкой — иначе параллельные
         # повторы одного запроса могли бы оба пройти проверку.
         with storage.transaction() as tx:
@@ -63,11 +71,15 @@ def get_routes(storage: TripStorage) -> APIRouter:
             if existing is not None:
                 response.status_code = status.HTTP_200_OK
                 response.headers["Idempotent-Replay"] = "true"
+                if idempotency_key:
+                    response.headers["Idempotency-Key"] = idempotency_key
                 return existing
 
             new_trip = Trip.from_create(trip_data)
             tx.trips.append(new_trip)
             tx.dirty = True
+            if idempotency_key:
+                response.headers["Idempotency-Key"] = idempotency_key
             return new_trip
 
     return r

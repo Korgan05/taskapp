@@ -50,10 +50,14 @@
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
           </button>
 
-          <button type="button" class="current-date-center date-center-btn" id="date-display-btn" aria-label="Выбрать дату в календаре">
-            <div id="date-display-text" class="date-main-text">01 октября 2026</div>
-            <div id="date-relative-tag" class="date-day-badge">Четверг · нажать для календаря 📅</div>
-          </button>
+          <div class="current-date-center">
+            <button type="button" class="date-chip-btn" id="date-display-btn" aria-label="Открыть календарь месяца">
+              <span class="date-chip-icon">📅</span>
+              <span id="date-display-text" class="date-main-text">01 октября 2026</span>
+              <span class="date-chip-arrow">▾</span>
+            </button>
+            <div id="date-relative-tag" class="date-day-badge">Четверг</div>
+          </div>
 
           <button type="button" id="next-day-btn" class="arrow-btn" aria-label="Следующий день">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
@@ -83,7 +87,12 @@
             <span class="hero-chip">Итог за день</span>
             <span class="hero-subtitle">Чистый доход после вычета комиссии</span>
           </div>
-          <div class="shift-badge-pill" id="summary-status-badge">2 поездки</div>
+          <div class="hero-actions-group">
+            <button type="button" class="btn-receipt-action" id="open-receipt-btn" aria-label="Открыть фирменный чек смены">
+              🧾 Чек смены
+            </button>
+            <div class="shift-badge-pill" id="summary-status-badge">2 поездки</div>
+          </div>
         </div>
 
         <div class="hero-main-stat">
@@ -262,6 +271,65 @@
           </button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- Модальное окно фирменного термочека смены (arqa style) -->
+  <div class="modal-backdrop" id="receipt-modal" aria-hidden="true">
+    <div class="modal-sheet receipt-sheet" role="dialog" aria-labelledby="receipt-modal-title">
+      <div class="receipt-paper">
+        <div class="receipt-sawtooth-top"></div>
+        <div class="receipt-inner">
+          <div class="receipt-header">
+            <div class="receipt-brand">arqa <span>mobility</span></div>
+            <h3 id="receipt-modal-title" class="receipt-title">ЧЕК СМЕНЫ ВОДИТЕЛЯ</h3>
+            <div class="receipt-date-line" id="receipt-date-text">01.10.2026</div>
+          </div>
+
+          <div class="receipt-divider"></div>
+
+          <div class="receipt-trips-list" id="receipt-trips-table">
+            <!-- Список поездок чека -->
+          </div>
+
+          <div class="receipt-divider"></div>
+
+          <div class="receipt-calc-rows">
+            <div class="r-row">
+              <span>Всего поездок:</span>
+              <strong id="receipt-count">2</strong>
+            </div>
+            <div class="r-row">
+              <span>Выручка смены:</span>
+              <strong id="receipt-revenue">3 900 ₸</strong>
+            </div>
+            <div class="r-row text-danger">
+              <span>Комиссия сервиса:</span>
+              <strong id="receipt-commission">−585 ₸</strong>
+            </div>
+            <div class="receipt-divider-thick"></div>
+            <div class="r-row r-total">
+              <span>ИТОГО НА РУКИ:</span>
+              <span class="r-total-val" id="receipt-net">3 315 ₸</span>
+            </div>
+            <div class="receipt-split-line" id="receipt-breakdown">
+              Безналичные: 2 400 ₸ · Наличные: 1 500 ₸
+            </div>
+          </div>
+
+          <div class="receipt-footer-stamp">
+            <div class="barcode-lines"></div>
+            <div class="barcode-num" id="receipt-barcode-code">ARQA-20261001-SHIFT</div>
+            <div class="receipt-thank-you">Смена закрыта · arqa mobility</div>
+          </div>
+        </div>
+        <div class="receipt-sawtooth-bottom"></div>
+      </div>
+
+      <div class="receipt-modal-actions">
+        <button type="button" class="btn-secondary" id="receipt-close-btn">Закрыть</button>
+        <button type="button" class="btn-cta" id="receipt-print-btn">🖨️ Распечатать чек</button>
+      </div>
     </div>
   </div>
 
