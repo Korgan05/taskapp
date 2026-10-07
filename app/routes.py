@@ -1,98 +1,73 @@
-from typing import List, Optional
 from datetime import date
-from fastapi import APIRouter, HTTPException, Query, status
+from typing import List
 
-from app.models import Trip, TripCreate, DaySummary, DayDetailsResponse
-from app.services import TripService
+from fastapi import APIRouter, HTTPException, Query, Response, status
+
+from app.models import DayDetailsResponse, DaySummary, Trip, TripCreate
+from app.services import TripIdConflict, TripService
 from app.storage import TripStorage
 
-router = APIRouter(prefix="/api", tags=["Trips & Shifts"])
+DateQuery = Query(..., alias="date", description="Дата в формате YYYY-MM-DD", examples=["2026-10-01"])
 
 
 def get_routes(storage: TripStorage) -> APIRouter:
     r = APIRouter(prefix="/api", tags=["Trips & Shifts"])
 
-    @r.get(
-        "/dates",
-        response_model=List[str],
-        summary="Получить список дат, за которые есть поездки",
-    )
+    @r.get("/dates", response_model=List[str], summary="Даты, за которые есть поездки")
     def list_available_dates():
-        all_trips = storage.load_all()
-        return TripService.get_available_dates(all_trips)
+        return TripService.get_available_dates(storage.load_all())
 
-    @r.get(
-        "/trips",
-        response_model=List[Trip],
-        summary="Список поездок за выбранный день",
-    )
-    def get_trips(
-        date_str: str = Query(
-            ...,
-            alias="date",
-            description="Дата в формате YYYY-MM-DD",
-            examples=["2026-10-01"],
-        )
-    ):
-        all_trips = storage.load_all()
-        return TripService.filter_by_date(all_trips, date_str)
+    @r.get("/trips", response_model=List[Trip], summary="Список поездок за день")
+    def get_trips(day: date = DateQuery):
+        return TripService.filter_by_date(storage.load_all(), day)
 
-    @r.get(
-        "/summary",
-        response_model=DaySummary,
-        summary="Сводка смены за выбранный день",
-    )
-    def get_summary(
-        date_str: str = Query(
-            ...,
-            alias="date",
-            description="Дата в формате YYYY-MM-DD",
-            examples=["2026-10-01"],
-        )
-    ):
-        all_trips = storage.load_all()
-        return TripService.calculate_summary(all_trips, date_str)
+    @r.get("/summary", response_model=DaySummary, summary="Сводка за день")
+    def get_summary(day: date = DateQuery):
+        return TripService.calculate_summary(storage.load_all(), day)
 
-    @r.get(
-        "/day",
-        response_model=DayDetailsResponse,
-        summary="Полная информация за день (сводка + список поездок)",
-    )
-    def get_day_details(
-        date_str: str = Query(
-            ...,
-            alias="date",
-            description="Дата в формате YYYY-MM-DD",
-            examples=["2026-10-01"],
+    @r.get("/day", response_model=DayDetailsResponse, summary="Сводка + поездки за день одним запросом")
+    def get_day_details(day: date = DateQuery):
+        trips = storage.load_all()
+        return DayDetailsResponse(
+            summary=TripService.calculate_summary(trips, day),
+            trips=TripService.filter_by_date(trips, day),
         )
-    ):
-        all_trips = storage.load_all()
-        summary = TripService.calculate_summary(all_trips, date_str)
-        trips = TripService.filter_by_date(all_trips, date_str)
-        return DayDetailsResponse(summary=summary, trips=trips)
 
     @r.post(
         "/trips",
         response_model=Trip,
         status_code=status.HTTP_201_CREATED,
-        summary="Добавить новую поездку с валидацией и защитой от дублей",
+        summary="Добавить поездку (идемпотентно)",
+        responses={
+            200: {"description": "Такая поездка уже есть — дубль не создан, возвращена существующая"},
+            201: {"description": "Поездка создана"},
+            409: {"description": "Этот id уже занят поездкой с другими данными"},
+            422: {"description": "Ошибка валидации (сумма ≤ 0, окончание не позже начала и т.д.)"},
+        },
     )
-    def add_trip(trip_data: TripCreate):
-        all_trips = storage.load_all()
+    def add_trip(trip_data: TripCreate, response: Response):
+        # Проверка и запись под одной блокировкой — иначе параллельные
+        # повторы одного запроса могли бы оба пройти проверку.
+        with storage.transaction() as tx:
+            try:
+                existing = TripService.find_existing(tx.trips, trip_data)
+            except TripIdConflict as conflict:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail={
+                        "message": f"ID «{conflict.existing.id}» уже занят поездкой с другими данными",
+                        "duplicate_id": conflict.existing.id,
+                    },
+                )
 
-        # Защита от дублей
-        duplicate = TripService.find_duplicate(all_trips, trip_data)
-        if duplicate:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail={
-                    "message": "Поездка уже зарегистрирована (дубликат отклонён)",
-                    "duplicate_id": duplicate.id,
-                },
-            )
+            if existing is not None:
+                response.status_code = status.HTTP_200_OK
+                response.headers["Idempotent-Replay"] = "true"
+                return existing
 
-        new_trip = Trip.from_create(trip_data)
-        saved = storage.add_trip(new_trip)
-        return saved
+            new_trip = Trip.from_create(trip_data)
+            tx.trips.append(new_trip)
+            tx.dirty = True
+            return new_trip
 
     return r

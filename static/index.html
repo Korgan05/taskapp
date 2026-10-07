@@ -49,20 +49,26 @@
         </div>
 
         <!-- Навигатор по дням -->
-        <section class="date-navigator">
+        <section class="date-navigator" aria-label="Выбор дня">
           <div class="date-controls">
-            <button id="prev-day-btn" class="nav-arrow-btn" aria-label="Предыдущий день">←</button>
+            <button id="prev-day-btn" class="nav-arrow-btn" aria-label="Предыдущий день" title="Предыдущий день (←)">←</button>
             <div class="date-display-wrap">
-              <input type="date" id="date-picker-input" class="date-picker-native" aria-label="Выбрать дату">
-              <div class="date-display" id="date-display-text">01 октября 2026</div>
-              <div class="date-relative-tag" id="date-relative-tag">Четверг</div>
+              <button type="button" id="date-display-btn" class="date-display-btn" title="Открыть календарь">
+                <span class="date-display" id="date-display-text">—</span>
+                <span class="date-relative-tag" id="date-relative-tag">&nbsp;</span>
+              </button>
+              <input type="date" id="date-picker-input" class="date-picker-hidden" tabindex="-1" aria-label="Выбрать дату">
             </div>
-            <button id="next-day-btn" class="nav-arrow-btn" aria-label="Следующий день">→</button>
+            <button id="next-day-btn" class="nav-arrow-btn" aria-label="Следующий день" title="Следующий день (→)">→</button>
           </div>
 
-          <!-- Быстрые чипсы дат с поездками -->
-          <div class="date-chips-scroll" id="date-chips-container">
-            <!-- Заполняется JS -->
+          <!-- Неделя: точка = в этот день были поездки -->
+          <div class="week-strip" id="week-strip"></div>
+
+          <div class="shift-jump">
+            <button type="button" id="prev-shift-btn" class="btn-link">‹ Пред. смена</button>
+            <button type="button" id="today-btn" class="btn-link btn-link-strong">Сегодня</button>
+            <button type="button" id="next-shift-btn" class="btn-link">След. смена ›</button>
           </div>
         </section>
 

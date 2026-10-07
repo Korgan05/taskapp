@@ -10,7 +10,7 @@ from app.storage import TripStorage
 
 # Пути к файлам данных и статике
 BASE_DIR = Path(__file__).resolve().parent
-DATA_PATH = BASE_DIR / "data" / "trips.json"
+DATA_PATH = Path(os.environ.get("TRIPS_FILE", BASE_DIR / "data" / "trips.json"))
 STATIC_DIR = BASE_DIR / "static"
 
 storage = TripStorage(DATA_PATH)

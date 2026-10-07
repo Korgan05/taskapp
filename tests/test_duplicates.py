@@ -1,136 +1,180 @@
-from datetime import datetime
-import pytest
-from fastapi.testclient import TestClient
-from fastapi import FastAPI
+from concurrent.futures import ThreadPoolExecutor
 
-from app.models import Trip, PaymentMethod
-from app.storage import TripStorage
+import pytest
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+
+from app.models import Trip, TripCreate
 from app.routes import get_routes
+from app.services import TripService
+from app.storage import StorageError, TripStorage
+
+BASE_TRIP = {
+    "start": "2026-10-05T11:00:00+05:00",
+    "end": "2026-10-05T11:30:00+05:00",
+    "amount": 1800,
+    "payment": "cash",
+    "commission": 270,
+}
 
 
 @pytest.fixture
 def client_with_storage(tmp_path):
-    test_file = tmp_path / "trips_dup_test.json"
-    storage = TripStorage(test_file)
-    test_app = FastAPI()
-    test_app.include_router(get_routes(storage))
-    return TestClient(test_app), storage
+    storage = TripStorage(tmp_path / "trips_dup_test.json")
+    app = FastAPI()
+    app.include_router(get_routes(storage))
+    return TestClient(app), storage
 
+
+# ---------- добавление и защита от дублей ----------
 
 def test_add_trip_success(client_with_storage):
     client, storage = client_with_storage
-    trip_data = {
-        "id": "new_1",
-        "start": "2026-10-05T10:00:00+05:00",
-        "end": "2026-10-05T10:25:00+05:00",
-        "amount": 2500,
-        "payment": "card",
-        "commission": 375,
-    }
-    response = client.post("/api/trips", json=trip_data)
-    assert response.status_code == 201
-    created = response.json()
-    assert created["id"] == "new_1"
-    assert created["amount"] == 2500.0
-
-    # Проверяем сохранение в хранилище
-    all_trips = storage.load_all()
-    assert len(all_trips) == 1
-    assert all_trips[0].id == "new_1"
+    res = client.post("/api/trips", json={**BASE_TRIP, "id": "new_1"})
+    assert res.status_code == 201
+    assert res.json()["id"] == "new_1"
+    assert [t.id for t in storage.load_all()] == ["new_1"]
 
 
-def test_duplicate_same_id_rejected(client_with_storage):
-    """Повторная отправка поездки с тем же ID отклоняется со статусом 409."""
+def test_resend_same_trip_does_not_create_duplicate(client_with_storage):
+    """Повторная отправка той же поездки: 200 + та же запись, в хранилище по-прежнему одна."""
     client, storage = client_with_storage
-    trip_data = {
-        "id": "fixed_id_100",
-        "start": "2026-10-05T11:00:00+05:00",
-        "end": "2026-10-05T11:30:00+05:00",
-        "amount": 1800,
-        "payment": "cash",
-        "commission": 270,
-    }
-    # 1. Первый запрос успешен
-    res1 = client.post("/api/trips", json=trip_data)
-    assert res1.status_code == 201
+    payload = {**BASE_TRIP, "id": "t100"}
 
-    # 2. Повторный запрос отклоняется
-    res2 = client.post("/api/trips", json=trip_data)
-    assert res2.status_code == 409
-    assert "дубликат" in res2.json()["detail"]["message"].lower()
+    first = client.post("/api/trips", json=payload)
+    second = client.post("/api/trips", json=payload)
+    third = client.post("/api/trips", json=payload)
 
-    # В хранилище должна остаться ровно 1 поездка
+    assert first.status_code == 201
+    assert second.status_code == 200
+    assert third.status_code == 200
+    assert second.headers.get("Idempotent-Replay") == "true"
+    assert second.json() == first.json()
     assert len(storage.load_all()) == 1
 
 
-def test_duplicate_same_payload_different_id_rejected(client_with_storage):
-    """
-    Повторная отправка тех же параметров (время, сумма, оплата, комиссия)
-    даже без указания ID или с другим ID распознаётся как смысловой дубликат.
-    """
+def test_resend_without_id_does_not_create_duplicate(client_with_storage):
+    """Клиент не передал id (или перегенерировал его) — дубль ловится по данным поездки."""
     client, storage = client_with_storage
-    trip1 = {
-        "start": "2026-10-05T14:00:00+05:00",
-        "end": "2026-10-05T14:40:00+05:00",
-        "amount": 3400,
-        "payment": "card",
-        "commission": 510,
-    }
-    trip2 = {
-        "id": "diff_id_but_same_trip",
-        "start": "2026-10-05T14:00:00+05:00",
-        "end": "2026-10-05T14:40:00+05:00",
-        "amount": 3400,
-        "payment": "card",
-        "commission": 510,
-    }
 
-    res1 = client.post("/api/trips", json=trip1)
-    assert res1.status_code == 201
+    first = client.post("/api/trips", json=BASE_TRIP)
+    second = client.post("/api/trips", json=BASE_TRIP)
+    regenerated_id = client.post("/api/trips", json={**BASE_TRIP, "id": "another_id"})
 
-    res2 = client.post("/api/trips", json=trip2)
-    assert res2.status_code == 409
+    assert first.status_code == 201
+    assert second.status_code == 200
+    assert regenerated_id.status_code == 200
+    assert second.json()["id"] == first.json()["id"]
     assert len(storage.load_all()) == 1
 
 
-def test_validation_amount_must_be_greater_than_zero(client_with_storage):
-    """Сумма поездки (amount) должна быть > 0."""
+def test_same_id_with_different_data_is_conflict(client_with_storage):
+    """Тот же id, но другая сумма — это не повтор, а конфликт. Старая запись не перезаписывается."""
     client, storage = client_with_storage
-    invalid_trip = {
-        "start": "2026-10-05T10:00:00+05:00",
-        "end": "2026-10-05T10:20:00+05:00",
-        "amount": 0,  # Ошибка: сумма 0
-        "payment": "cash",
-        "commission": 0,
-    }
-    res = client.post("/api/trips", json=invalid_trip)
+    client.post("/api/trips", json={**BASE_TRIP, "id": "t200"})
+
+    res = client.post("/api/trips", json={**BASE_TRIP, "id": "t200", "amount": 9999})
+
+    assert res.status_code == 409
+    assert res.json()["detail"]["duplicate_id"] == "t200"
+    trips = storage.load_all()
+    assert len(trips) == 1
+    assert trips[0].amount == 1800
+
+
+def test_same_moment_in_other_timezone_is_duplicate(client_with_storage):
+    """11:00+05:00 и 06:00Z — один и тот же момент, значит та же поездка."""
+    client, storage = client_with_storage
+    client.post("/api/trips", json=BASE_TRIP)
+    res = client.post(
+        "/api/trips",
+        json={**BASE_TRIP, "start": "2026-10-05T06:00:00Z", "end": "2026-10-05T06:30:00Z"},
+    )
+    assert res.status_code == 200
+    assert len(storage.load_all()) == 1
+
+
+def test_different_trips_are_both_saved(client_with_storage):
+    client, storage = client_with_storage
+    assert client.post("/api/trips", json=BASE_TRIP).status_code == 201
+    other = {**BASE_TRIP, "start": "2026-10-05T12:00:00+05:00", "end": "2026-10-05T12:20:00+05:00"}
+    assert client.post("/api/trips", json=other).status_code == 201
+    assert len(storage.load_all()) == 2
+
+
+def test_parallel_resends_create_single_trip(tmp_path):
+    """
+    10 одновременных повторов одной поездки (как при ретраях с плохой связью).
+    Проверка и запись идут под одной блокировкой — сохраниться должна ровно одна.
+    """
+    storage = TripStorage(tmp_path / "parallel.json")
+    payload = TripCreate(**{**BASE_TRIP, "id": "race_1"})
+
+    def submit():
+        with storage.transaction() as tx:
+            if TripService.find_existing(tx.trips, payload) is None:
+                tx.trips.append(Trip.from_create(payload))
+                tx.dirty = True
+
+    with ThreadPoolExecutor(max_workers=10) as pool:
+        for f in [pool.submit(submit) for _ in range(10)]:
+            f.result()
+
+    assert len(storage.load_all()) == 1
+
+
+# ---------- валидация ----------
+
+@pytest.mark.parametrize("amount", [0, -100])
+def test_amount_must_be_positive(client_with_storage, amount):
+    client, storage = client_with_storage
+    res = client.post("/api/trips", json={**BASE_TRIP, "amount": amount, "commission": 0})
     assert res.status_code == 422
-    assert len(storage.load_all()) == 0
+    assert storage.load_all() == []
 
 
-def test_validation_end_must_be_after_start(client_with_storage):
-    """Окончание поездки (end) должно быть строго позже начала (start)."""
+@pytest.mark.parametrize(
+    "end",
+    ["2026-10-05T10:50:00+05:00", "2026-10-05T11:00:00+05:00"],  # раньше начала / равно началу
+    ids=["end_before_start", "end_equals_start"],
+)
+def test_end_must_be_after_start(client_with_storage, end):
     client, storage = client_with_storage
-    # 1. Окончание раньше начала
-    invalid_trip_1 = {
-        "start": "2026-10-05T12:00:00+05:00",
-        "end": "2026-10-05T11:50:00+05:00",  # Раньше!
-        "amount": 1000,
-        "payment": "card",
-        "commission": 150,
-    }
-    res1 = client.post("/api/trips", json=invalid_trip_1)
-    assert res1.status_code == 422
+    res = client.post("/api/trips", json={**BASE_TRIP, "end": end})
+    assert res.status_code == 422
+    assert storage.load_all() == []
 
-    # 2. Окончание равно началу (длительность 0 сек)
-    invalid_trip_2 = {
-        "start": "2026-10-05T12:00:00+05:00",
-        "end": "2026-10-05T12:00:00+05:00",  # Равно!
-        "amount": 1000,
-        "payment": "card",
-        "commission": 150,
-    }
-    res2 = client.post("/api/trips", json=invalid_trip_2)
-    assert res2.status_code == 422
 
-    assert len(storage.load_all()) == 0
+def test_commission_cannot_exceed_amount(client_with_storage):
+    client, _ = client_with_storage
+    res = client.post("/api/trips", json={**BASE_TRIP, "commission": 5000})
+    assert res.status_code == 422
+
+
+def test_time_without_timezone_rejected(client_with_storage):
+    client, _ = client_with_storage
+    res = client.post(
+        "/api/trips",
+        json={**BASE_TRIP, "start": "2026-10-05T11:00:00", "end": "2026-10-05T11:30:00"},
+    )
+    assert res.status_code == 422
+
+
+def test_unknown_payment_rejected(client_with_storage):
+    client, _ = client_with_storage
+    assert client.post("/api/trips", json={**BASE_TRIP, "payment": "crypto"}).status_code == 422
+
+
+# ---------- хранилище ----------
+
+def test_corrupted_file_is_not_silently_overwritten(tmp_path):
+    """Если JSON битый, нельзя считать его пустым и перезаписать — данные водителя пропадут."""
+    path = tmp_path / "broken.json"
+    path.write_text("[{ broken json", encoding="utf-8")
+    storage = TripStorage(path)
+
+    with pytest.raises(StorageError):
+        with storage.transaction() as tx:
+            tx.dirty = True
+
+    assert path.read_text(encoding="utf-8") == "[{ broken json"

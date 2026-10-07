@@ -282,20 +282,39 @@ button, .btn-primary, .btn-ghost {
 }
 
 .date-display-wrap {
-  text-align: center;
-  cursor: pointer;
   position: relative;
   flex: 1;
+  min-width: 0;
 }
 
-.date-picker-native {
-  position: absolute;
-  top: 0;
-  left: 0;
+.date-display-btn {
   width: 100%;
-  height: 100%;
-  opacity: 0;
+  background: transparent;
+  border: none;
+  border-radius: 10px;
+  padding: 4px 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
   cursor: pointer;
+}
+
+.date-display-btn:hover {
+  background: rgba(45, 91, 227, 0.07);
+}
+
+/* Поле остаётся в DOM (нужно для showPicker), но невидимо и не ловит клики */
+.date-picker-hidden {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+  border: 0;
+  padding: 0;
 }
 
 .date-display {
@@ -311,37 +330,128 @@ button, .btn-primary, .btn-ghost {
   font-weight: 500;
 }
 
-.date-chips-scroll {
+.nav-arrow-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* Неделя */
+.week-strip {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+.week-day {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  padding: 6px 0 8px;
   display: flex;
-  gap: 6px;
-  overflow-x: auto;
-  padding: 4px 0 6px;
-  scrollbar-width: none;
-}
-.date-chips-scroll::-webkit-scrollbar { display: none; }
-
-.date-chip {
-  flex: none;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  padding: 4px 12px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--steel);
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
   cursor: pointer;
-  transition: all 0.15s ease;
+  color: var(--ink);
+  font-weight: 600;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
-.date-chip:hover {
-  border-color: var(--route);
+.week-day:hover {
+  background: var(--paper);
+}
+
+.week-day .wd-name {
+  font-size: 11px;
+  color: var(--steel);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.week-day .wd-num {
+  font-family: var(--display);
+  font-size: 15px;
+  line-height: 1.2;
+}
+
+.week-day .wd-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: transparent;
+}
+
+.week-day.has-trips .wd-dot {
+  background: var(--route);
+}
+
+.week-day.is-today .wd-num {
   color: var(--route);
 }
 
-.date-chip.active {
+.week-day.is-active {
   background: var(--route);
-  color: #fff;
   border-color: var(--route);
+  color: #fff;
+  box-shadow: 0 6px 14px -6px rgba(45, 91, 227, 0.6);
+}
+
+.week-day.is-active .wd-name,
+.week-day.is-active .wd-num {
+  color: #fff;
+}
+
+.week-day.is-active.has-trips .wd-dot {
+  background: #fff;
+}
+
+.week-day.is-other-month .wd-num {
+  opacity: 0.55;
+}
+
+/* Переходы между сменами */
+.shift-jump {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.btn-link {
+  background: none;
+  border: none;
+  padding: 6px 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--route);
+  cursor: pointer;
+  border-radius: 8px;
+}
+
+.btn-link:hover:not(:disabled) {
+  background: var(--route-soft);
+}
+
+.btn-link:disabled {
+  color: var(--steel-light);
+  cursor: default;
+}
+
+.btn-link-strong {
+  color: var(--ink);
+}
+
+/* Пока грузятся данные дня — приглушаем старые цифры, чтобы не путать */
+.is-loading .receipt-section,
+.is-loading .stats-grid,
+.is-loading .trips-section {
+  opacity: 0.45;
+  transition: opacity 0.15s ease;
+}
+
+.empty-jump-btn {
+  margin-top: 12px;
 }
 
 /* Фирменный Чек Смены (Thermal Receipt) */
