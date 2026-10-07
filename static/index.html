@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Дневник смен водителя — arqa</title>
+  <meta name="description" content="Учёт смен, поездок, комиссий и выплат водителю за день с защитой от дублей.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;500;600;700&family=Golos+Text:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Верхняя шапка -->
+    <header class="top-nav">
+      <div class="nav-container">
+        <div class="brand">
+          <span class="brand-logo">🚕</span>
+          <div>
+            <h1 class="brand-title">Дневник смен</h1>
+            <span class="brand-subtitle">водительский терминал · arqa</span>
+          </div>
+        </div>
+        <div class="header-actions">
+          <button id="view-mode-toggle" class="btn-ghost btn-sm" title="Переключить вид: телефон / десктоп">
+            <span class="icon">📱</span> <span class="mode-text">Вид: Телефон</span>
+          </button>
+          <a href="/docs" target="_blank" class="btn-ghost btn-sm" title="Открыть Swagger документацию">
+            <span class="icon">⚡</span> API Docs
+          </a>
+          <button id="open-add-modal-btn" class="btn-primary btn-sm">
+            <span class="icon">+</span> Новая поездка
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Основной контейнер (поддерживает режим мобильного телефона) -->
+    <main class="main-wrapper" id="main-wrapper">
+      <div class="phone-frame" id="phone-frame">
+        
+        <!-- Верхняя мобильная панель / статус-бар -->
+        <div class="phone-status-bar">
+          <span class="status-time" id="status-clock">09:41</span>
+          <div class="status-indicators">
+            <span class="online-badge"><span class="dot"></span> В сети</span>
+          </div>
+        </div>
+
+        <!-- Навигатор по дням -->
+        <section class="date-navigator">
+          <div class="date-controls">
+            <button id="prev-day-btn" class="nav-arrow-btn" aria-label="Предыдущий день">←</button>
+            <div class="date-display-wrap">
+              <input type="date" id="date-picker-input" class="date-picker-native" aria-label="Выбрать дату">
+              <div class="date-display" id="date-display-text">01 октября 2026</div>
+              <div class="date-relative-tag" id="date-relative-tag">Четверг</div>
+            </div>
+            <button id="next-day-btn" class="nav-arrow-btn" aria-label="Следующий день">→</button>
+          </div>
+
+          <!-- Быстрые чипсы дат с поездками -->
+          <div class="date-chips-scroll" id="date-chips-container">
+            <!-- Заполняется JS -->
+          </div>
+        </section>
+
+        <!-- Чек смены водителя (фирменный дизайн термального чека arqa) -->
+        <section class="receipt-section">
+          <div class="receipt-container">
+            <div class="receipt-paper" id="shift-receipt">
+              <div class="receipt-header">
+                <div class="receipt-title">ЧЕК СМЕНЫ ВОДИТЕЛЯ</div>
+                <div class="receipt-date" id="receipt-date-label">01.10.2026</div>
+                <div class="receipt-divider-dash"></div>
+              </div>
+
+              <!-- Мини-список поездок в чеке -->
+              <div class="receipt-trips-list" id="receipt-mini-trips">
+                <div class="receipt-row muted"><span>Загрузка данных...</span></div>
+              </div>
+
+              <div class="receipt-divider-solid"></div>
+
+              <!-- Итоговые показатели в чеке -->
+              <div class="receipt-summary-rows">
+                <div class="receipt-row">
+                  <span>Число поездок</span>
+                  <strong id="receipt-trips-count">0</strong>
+                </div>
+                <div class="receipt-row">
+                  <span>Общая выручка</span>
+                  <strong id="receipt-total-revenue">0 ₸</strong>
+                </div>
+                <div class="receipt-row">
+                  <span>Комиссия сервиса</span>
+                  <strong class="receipt-commission" id="receipt-total-commission">−0 ₸</strong>
+                </div>
+                <div class="receipt-row">
+                  <span>Наличные / карта</span>
+                  <span id="receipt-payment-split">0 / 0 ₸</span>
+                </div>
+              </div>
+
+              <div class="receipt-divider-solid"></div>
+
+              <!-- Главная сумма: На руки -->
+              <div class="receipt-net-block">
+                <div class="net-caption">ИТОГО НА РУКИ:</div>
+                <div class="net-value" id="receipt-net-payout">0 ₸</div>
+              </div>
+
+              <!-- Зубчатый край термоленты -->
+              <div class="receipt-jagged-edge"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Карточки статистики -->
+        <section class="stats-grid">
+          <div class="stat-card stat-net">
+            <div class="stat-label">Чистый доход (на руки)</div>
+            <div class="stat-val" id="card-net">0 ₸</div>
+            <div class="stat-sub">После вычета комиссии</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Выручка</div>
+            <div class="stat-val" id="card-revenue">0 ₸</div>
+            <div class="stat-sub" id="card-trips-count">0 поездок</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Комиссия</div>
+            <div class="stat-val text-warn" id="card-commission">0 ₸</div>
+            <div class="stat-sub" id="card-commission-rate">0% от выручки</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Нал / Карта</div>
+            <div class="stat-split-val">
+              <span id="card-cash">0 ₸</span> · <span id="card-card">0 ₸</span>
+            </div>
+            <div class="split-bar-track">
+              <div class="split-bar-cash" id="split-progress-cash" style="width: 50%;"></div>
+              <div class="split-bar-card" id="split-progress-card" style="width: 50%;"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Список поездок за смену -->
+        <section class="trips-section">
+          <div class="trips-header">
+            <h2>Поездки за день</h2>
+            <span class="trips-badge" id="trips-count-badge">0</span>
+          </div>
+
+          <div class="trips-list" id="trips-list-container">
+            <!-- Карточки поездок заполняются JS -->
+          </div>
+        </section>
+
+      </div>
+    </main>
+
+    <!-- Модальное окно добавления поездки -->
+    <div class="modal-overlay" id="add-trip-modal" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-header">
+          <div>
+            <h3>Добавить поездку</h3>
+            <p class="modal-sub">Данные будут валидированы на сервере</p>
+          </div>
+          <button class="modal-close-btn" id="modal-close-btn" aria-label="Закрыть">&times;</button>
+        </div>
+
+        <form id="add-trip-form" class="trip-form">
+          <div class="form-row">
+            <label for="trip-start">Время начала</label>
+            <input type="datetime-local" id="trip-start" name="start" required>
+          </div>
+
+          <div class="form-row">
+            <div class="label-with-helper">
+              <label for="trip-end">Время окончания</label>
+              <div class="quick-time-buttons">
+                <button type="button" class="btn-chip" id="add-15m-btn">+15м</button>
+                <button type="button" class="btn-chip" id="add-30m-btn">+30м</button>
+              </div>
+            </div>
+            <input type="datetime-local" id="trip-end" name="end" required>
+            <span class="field-hint">Должно быть позже времени начала</span>
+          </div>
+
+          <div class="form-row">
+            <label for="trip-amount">Сумма поездки (₸)</label>
+            <input type="number" id="trip-amount" name="amount" min="1" step="50" placeholder="2500" required>
+            <span class="field-hint">Сумма должна быть больше 0</span>
+          </div>
+
+          <div class="form-row">
+            <div class="label-with-helper">
+              <label for="trip-commission">Комиссия (₸)</label>
+              <button type="button" class="btn-chip" id="calc-15-commission-btn">Рассчитать 15%</button>
+            </div>
+            <input type="number" id="trip-commission" name="commission" min="0" step="5" placeholder="375" required>
+          </div>
+
+          <div class="form-row">
+            <label>Способ оплаты</label>
+            <div class="payment-selector">
+              <label class="payment-option">
+                <input type="radio" name="payment" value="card" checked>
+                <span class="payment-pill">💳 Безналичные / Карта</span>
+              </label>
+              <label class="payment-option">
+                <input type="radio" name="payment" value="cash">
+                <span class="payment-pill">💵 Наличные</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <label for="trip-id">ID поездки <span class="muted">(необязательно)</span></label>
+            <input type="text" id="trip-id" name="id" placeholder="Оставьте пустым для автогенерации">
+            <span class="field-hint">Для проверки защиты от дублей</span>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="btn-ghost" id="fill-sample-btn" title="Заполнить готовым примером">
+              Пример из ТЗ
+            </button>
+            <button type="submit" class="btn-primary" id="submit-trip-btn">
+              Сохранить поездку
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Всплывающие уведомления (Toasts) -->
+    <div class="toast-container" id="toast-container"></div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
