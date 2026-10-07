@@ -1,13 +1,9 @@
 /**
- * Дневник смен водителя — фронтенд клиент
- * 
- * Логика работы:
- * - Все даты обрабатываются по локальному календарю (YYYY-MM-DD), исключая сдвиги UTC.
- * - При первой загрузке открывается дата из ТЗ (2026-10-01) или ближайшая рабочая смена.
- * - Полная поддержка клавиатуры (←/→ для дней, Shift+←/→ для смен, Esc для модалки).
+ * arqa mobility · Дневник смен водителя
+ * Клиентская логика: календарь, аналитика смены, API, темы, горячие клавиши.
  */
 
-const TZ_OFFSET = "+05:00"; // Локальный часовой пояс водителя (Казахстан / Алматы)
+const TZ_OFFSET = "+05:00"; // Локальный часовой пояс водителя (Алматы, Казахстан)
 
 const state = {
   currentDate: null,
@@ -20,6 +16,7 @@ const state = {
 const $ = (id) => document.getElementById(id);
 
 const el = {
+  themeToggleBtn: $("theme-toggle-btn"),
   prevDayBtn: $("prev-day-btn"),
   nextDayBtn: $("next-day-btn"),
   dateDisplayBtn: $("date-display-btn"),
@@ -72,7 +69,7 @@ function toDateStr(d) {
 
 function parseDateStr(s) {
   const [y, m, d] = s.split("-").map(Number);
-  return new Date(y, m - 1, d, 12, 0, 0); // Полдень исключает переход на летнее/зимнее время
+  return new Date(y, m - 1, d, 12, 0, 0); // Полдень исключает переход времени
 }
 
 function addDays(dateStr, n) {
@@ -88,8 +85,8 @@ function diffDays(a, b) {
   return Math.round((parseDateStr(a) - parseDateStr(b)) / 86400000);
 }
 
-function formatTenge(amount) {
-  return new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(amount) + " ₸";
+function formatMoney(amount) {
+  return new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(amount);
 }
 
 function formatRelativeLabel(dateStr) {
@@ -102,7 +99,6 @@ function formatRelativeLabel(dateStr) {
 }
 
 function formatIsoTime(isoString) {
-  // Берём время строго из строки ISO (например: 2026-10-01T08:10:00+05:00 -> 08:10)
   return isoString.slice(11, 16);
 }
 
@@ -153,7 +149,7 @@ async function loadAvailableDates() {
     const res = await fetch("/api/dates");
     if (res.ok) state.availableDates = await res.json();
   } catch (err) {
-    console.error("Ошибка загрузки доступных дат:", err);
+    console.error("Ошибка загрузки дат:", err);
   }
 }
 
@@ -175,7 +171,7 @@ function switchDate(dateStr) {
 function renderDateHeader() {
   const d = state.currentDate;
   el.datePickerInput.value = d;
-  
+
   const dateObj = parseDateStr(d);
   const dateFormatted = dateObj.toLocaleDateString("ru-RU", {
     day: "numeric",
@@ -198,7 +194,7 @@ function renderDateHeader() {
 
 function renderWeekStrip() {
   const current = parseDateStr(state.currentDate);
-  const mondayOffset = (current.getDay() + 6) % 7; // Понедельник = 0
+  const mondayOffset = (current.getDay() + 6) % 7;
   const monday = addDays(state.currentDate, -mondayOffset);
   const today = todayStr();
   const dayNames = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
@@ -256,7 +252,7 @@ async function loadDayData(dateStr) {
   } catch (err) {
     if (err.name === "AbortError") return;
     if (seq === state.loadSeq) {
-      showToast("Ошибка загрузки данных за день: " + err.message, "error");
+      showToast("Ошибка загрузки данных: " + err.message, "error");
     }
   }
 }
@@ -264,15 +260,20 @@ async function loadDayData(dateStr) {
 function renderSummary(summary) {
   const { trips_count, total_revenue, total_commission, net_payout, breakdown } = summary;
 
-  el.summaryNet.textContent = formatTenge(net_payout);
-  el.summaryRevenue.textContent = formatTenge(total_revenue);
-  el.summaryTripsCount.textContent = `${trips_count} ${plural(trips_count, "поездка", "поездки", "поездок")}`;
-  el.summaryCommission.textContent = total_commission > 0 ? `−${formatTenge(total_commission)}` : "0 ₸";
+  // Чистый доход водителю на руки
+  el.summaryNet.textContent = formatMoney(net_payout);
 
+  // Выручка
+  el.summaryRevenue.textContent = `${formatMoney(total_revenue)} ₸`;
+  el.summaryTripsCount.textContent = `${trips_count} ${plural(trips_count, "поездка", "поездки", "поездок")} за смену`;
+
+  // Комиссия
+  el.summaryCommission.textContent = total_commission > 0 ? `−${formatMoney(total_commission)} ₸` : "0 ₸";
   const rate = total_revenue > 0 ? Math.round((total_commission / total_revenue) * 100) : 0;
   el.summaryCommissionRate.textContent = `${rate}% от выручки`;
 
-  el.summaryPaymentsText.textContent = `${formatTenge(breakdown.card)} (карта) · ${formatTenge(breakdown.cash)} (нал)`;
+  // Оплата
+  el.summaryPaymentsText.textContent = `карта ${formatMoney(breakdown.card)} ₸ · нал ${formatMoney(breakdown.cash)} ₸`;
 
   const total = breakdown.card + breakdown.cash;
   if (total > 0) {
@@ -287,8 +288,6 @@ function renderSummary(summary) {
 
   el.tripsCountBadge.textContent = trips_count;
   el.summaryStatusBadge.textContent = trips_count > 0 ? `${trips_count} ${plural(trips_count, "поездка", "поездки", "поездок")}` : "Смена пустая";
-  el.summaryStatusBadge.style.background = trips_count > 0 ? "var(--color-success-soft)" : "var(--bg-page)";
-  el.summaryStatusBadge.style.color = trips_count > 0 ? "var(--color-success)" : "var(--text-muted)";
 }
 
 function renderTrips(trips) {
@@ -297,17 +296,17 @@ function renderTrips(trips) {
   if (!trips || trips.length === 0) {
     const nearest = nearestShiftDate(state.currentDate);
     const jumpBtnHtml = nearest
-      ? `<button type="button" class="btn btn-secondary btn-sm" id="jump-nearest-btn">Перейти к смене ${nearest.split("-").reverse().slice(0, 2).join(".")}</button>`
+      ? `<button type="button" class="btn-secondary" id="jump-nearest-btn">Перейти к смене ${nearest.split("-").reverse().slice(0, 2).join(".")}</button>`
       : "";
 
     el.tripsList.innerHTML = `
-      <div class="empty-state">
-        <span class="empty-icon">☕</span>
-        <h4 class="empty-title">В этот день поездок нет</h4>
-        <p class="empty-desc">Водитель не выходил на линию или смена ещё не заполнена.</p>
-        <div style="display:flex; justify-content:center; gap:8px;">
+      <div class="empty-shift-box">
+        <span class="empty-shift-icon">🛋️</span>
+        <h4 class="empty-shift-title">В этот день поездок нет</h4>
+        <p class="empty-shift-desc">Водитель не выходил на смену или заказы ещё не внесены.</p>
+        <div class="empty-shift-actions">
           ${jumpBtnHtml}
-          <button type="button" class="btn btn-primary btn-sm" id="empty-add-btn">+ Добавить поездку</button>
+          <button type="button" class="btn-cta" id="empty-add-btn">+ Добавить поездку</button>
         </div>
       </div>
     `;
@@ -326,23 +325,26 @@ function renderTrips(trips) {
     const isCard = trip.payment === "card";
 
     const card = document.createElement("div");
-    card.className = "trip-card";
+    card.className = "trip-item-card";
     card.innerHTML = `
-      <div class="trip-left">
-        <div class="trip-interval">${startTime} → ${endTime}</div>
-        <div class="trip-meta">
-          <span>⏱️ ${durationMin} мин</span>
-          <span>·</span>
-          <span>ID: <code>${escapeHtml(trip.id)}</code></span>
+      <div class="trip-col-left">
+        <div class="trip-taxi-badge">🚕</div>
+        <div>
+          <div class="trip-time-title">${startTime} → ${endTime}</div>
+          <div class="trip-meta-tags">
+            <span>⏱️ ${durationMin} мин</span>
+            <span>·</span>
+            <span>ID: <code>${escapeHtml(trip.id)}</code></span>
+          </div>
         </div>
       </div>
-      <div class="trip-right">
-        <div class="trip-amount">${formatTenge(trip.amount)}</div>
-        <div class="trip-tags">
-          <span class="tag-payment ${isCard ? "card" : "cash"}">
+      <div class="trip-col-right">
+        <div class="trip-amount-text">${formatMoney(trip.amount)} ₸</div>
+        <div class="trip-pill-group">
+          <span class="badge-pay ${isCard ? "card" : "cash"}">
             ${isCard ? "💳 Карта" : "💵 Наличные"}
           </span>
-          <span class="tag-commission">ком. −${formatTenge(trip.commission)}</span>
+          <span class="badge-fee">ком. −${formatMoney(trip.commission)} ₸</span>
         </div>
       </div>
     `;
@@ -350,7 +352,7 @@ function renderTrips(trips) {
   });
 }
 
-/* ---------------- Модальное окно ---------------- */
+/* ---------------- Модальное окно добавления поездки ---------------- */
 
 const toInputDateTime = (d) => `${toDateStr(d)}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 
@@ -358,7 +360,7 @@ function openAddModal() {
   const now = new Date();
   const start = parseDateStr(state.currentDate);
   start.setHours(now.getHours(), now.getMinutes(), 0, 0);
-  const end = new Date(start.getTime() + 25 * 60000); // +25 минут по умолчанию
+  const end = new Date(start.getTime() + 25 * 60000);
 
   el.tripStart.value = toInputDateTime(start);
   el.tripEnd.value = toInputDateTime(end);
@@ -401,7 +403,7 @@ function fillSampleData() {
   el.tripCommission.value = "360";
   el.tripId.value = "t1";
   el.form.querySelector('input[name="payment"][value="card"]').checked = true;
-  showToast("Заполнена поездка t1 из ТЗ. При сохранении проверится защита от дублей!", "info");
+  showToast("Заполнен пример t1 из ТЗ. Отправьте форму для проверки защиты от дублей!", "info");
 }
 
 function formatServerError(data) {
@@ -462,13 +464,13 @@ async function handleTripSubmit(e) {
     const body = await res.json().catch(() => null);
 
     if (res.status === 201) {
-      showToast(`Поездка добавлена: ${formatTenge(body.amount)}`, "success");
+      showToast(`Поездка добавлена: ${formatMoney(body.amount)} ₸`, "success");
       closeAddModal();
       await loadAvailableDates();
       switchDate(body.start.slice(0, 10));
     } else if (res.status === 200) {
-      // Идемпотентность сработала!
-      showToast(`Поездка уже была сохранена ранее (ID: ${body.id}) — дубль не создан`, "info");
+      // Идемпотентность
+      showToast(`Поездка уже сохранена ранее (ID: ${body.id}) — дубль не создан`, "info");
       closeAddModal();
       await loadAvailableDates();
       switchDate(body.start.slice(0, 10));
@@ -487,9 +489,32 @@ async function handleTripSubmit(e) {
   }
 }
 
+/* ---------------- Переключение темы (Тёмная / Светлая) ---------------- */
+
+function initTheme() {
+  const saved = localStorage.getItem("arqa-theme") || "dark";
+  document.documentElement.setAttribute("data-theme", saved);
+  updateThemeIcon(saved);
+}
+
+function toggleTheme() {
+  const current = document.documentElement.getAttribute("data-theme") || "dark";
+  const next = current === "dark" ? "light" : "dark";
+  document.documentElement.setAttribute("data-theme", next);
+  localStorage.setItem("arqa-theme", next);
+  updateThemeIcon(next);
+}
+
+function updateThemeIcon(theme) {
+  const icon = el.themeToggleBtn.querySelector(".theme-icon");
+  if (icon) icon.textContent = theme === "dark" ? "☀️" : "🌙";
+}
+
 /* ---------------- Слушатели событий ---------------- */
 
 function setupEventListeners() {
+  el.themeToggleBtn.addEventListener("click", toggleTheme);
+
   el.prevDayBtn.addEventListener("click", () => switchDate(addDays(state.currentDate, -1)));
   el.nextDayBtn.addEventListener("click", () => switchDate(addDays(state.currentDate, 1)));
   el.prevShiftBtn.addEventListener("click", () => {
@@ -569,6 +594,7 @@ function pickInitialDate() {
 }
 
 async function init() {
+  initTheme();
   setupEventListeners();
   await loadAvailableDates();
   switchDate(pickInitialDate());

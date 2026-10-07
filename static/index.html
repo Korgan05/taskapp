@@ -1,201 +1,243 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="ru" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Дневник смен водителя · arqa</title>
-  <meta name="description" content="Сервис учёта смен водителя: расчёт выручки, комиссии, дохода на руки и защита от дублирования поездок.">
+  <title>arqa mobility · Дневник смен водителя</title>
+  <meta name="description" content="Терминал учёта смен водителя: выручка, комиссия, чистый доход на руки и дедупликация поездок.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Unbounded:wght@500;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-  <div class="app-container">
-    <!-- Верхняя панель -->
-    <header class="app-header">
-      <div class="header-left">
-        <div class="header-logo">
-          <span class="logo-icon">🚕</span>
+  <div class="app-layout">
+    <!-- Шапка приложения -->
+    <header class="navbar">
+      <div class="nav-brand">
+        <div class="brand-mark">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/>
+            <circle cx="7" cy="17" r="2"/>
+            <path d="M9 17h6"/>
+            <circle cx="17" cy="17" r="2"/>
+          </svg>
         </div>
-        <div>
-          <h1 class="header-title">Дневник смен</h1>
-          <p class="header-subtitle">Учёт поездок и выплат водителя</p>
+        <div class="brand-text">
+          <div class="brand-title">arqa <span>mobility</span></div>
+          <div class="brand-subtitle">Дневник смен водителя</div>
         </div>
       </div>
-      <div class="header-right">
-        <a href="/docs" target="_blank" class="btn btn-secondary btn-sm" title="Swagger OpenAPI документация">
-          API Docs
+
+      <div class="nav-controls">
+        <button type="button" id="theme-toggle-btn" class="nav-btn-icon" title="Сменить тему оформления" aria-label="Сменить тему">
+          <span class="theme-icon">🌙</span>
+        </button>
+        <a href="/docs" target="_blank" class="nav-btn-link" title="OpenAPI Swagger документация">
+          <span class="api-tag">API</span> Docs
         </a>
-        <button type="button" id="open-add-modal-btn" class="btn btn-primary btn-sm">
-          + Добавить поездку
+        <button type="button" id="open-add-modal-btn" class="btn-cta">
+          <span class="plus-icon">+</span> Новая поездка
         </button>
       </div>
     </header>
 
-    <main class="app-main">
-      <!-- Навигатор по датам -->
-      <section class="date-card" aria-label="Выбор даты">
-        <div class="date-controls">
-          <button type="button" id="prev-day-btn" class="btn-icon" aria-label="Предыдущий день" title="Предыдущий день (клавиша ←)">
-            ←
+    <main class="main-content">
+      <!-- Навигатор по дням и сменам -->
+      <section class="date-navigator-card">
+        <div class="nav-day-row">
+          <button type="button" id="prev-day-btn" class="arrow-btn" aria-label="Предыдущий день" title="Предыдущий день (клавиша ←)">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
           </button>
-          
-          <div class="date-selector-center">
-            <button type="button" id="date-display-btn" class="date-display-btn" title="Выбрать дату в календаре">
-              <span id="date-display-text" class="date-title">Загрузка...</span>
-              <span id="date-relative-tag" class="date-subtitle">...</span>
+
+          <div class="current-date-center">
+            <button type="button" id="date-display-btn" class="date-title-btn" title="Выбрать в календаре">
+              <span id="date-display-text" class="date-main-text">01 октября 2026</span>
+              <span id="date-relative-tag" class="date-day-badge">Четверг</span>
             </button>
-            <input type="date" id="date-picker-input" class="hidden-date-input" aria-label="Календарь">
+            <input type="date" id="date-picker-input" class="date-input-hidden" aria-label="Выбрать дату">
           </div>
 
-          <button type="button" id="next-day-btn" class="btn-icon" aria-label="Следующий день" title="Следующий день (клавиша →)">
-            →
+          <button type="button" id="next-day-btn" class="arrow-btn" aria-label="Следующий день" title="Следующий день (клавиша →)">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
           </button>
         </div>
 
-        <!-- Лента недели с индикаторами смен -->
-        <div class="week-strip" id="week-strip" aria-label="Дни недели"></div>
+        <!-- Лента дней недели -->
+        <div class="week-strip-wrap">
+          <div class="week-strip" id="week-strip"></div>
+        </div>
 
         <!-- Быстрые переходы между сменами -->
-        <div class="shift-nav-footer">
-          <button type="button" id="prev-shift-btn" class="text-link">‹ Предыдущая смена</button>
-          <button type="button" id="today-btn" class="text-link text-link-today">Сегодня</button>
-          <button type="button" id="next-shift-btn" class="text-link">Следующая смена ›</button>
+        <div class="shift-quick-actions">
+          <button type="button" id="prev-shift-btn" class="chip-action">
+            <span>‹</span> Пред. смена
+          </button>
+          <button type="button" id="today-btn" class="chip-action chip-today">
+            Сегодня
+          </button>
+          <button type="button" id="next-shift-btn" class="chip-action">
+            След. смена <span>›</span>
+          </button>
         </div>
       </section>
 
-      <!-- Сводка за день -->
-      <section class="summary-section">
-        <div class="kpi-main-card">
-          <div class="kpi-main-top">
-            <div>
-              <div class="kpi-label">Чистый доход за день</div>
-              <div class="kpi-main-value" id="summary-net">0 ₸</div>
-              <div class="kpi-subtext">Выручка за вычетом комиссии сервиса</div>
+      <!-- Главная карточка доходов смены -->
+      <section class="income-hero-card">
+        <div class="hero-header">
+          <div class="hero-label-group">
+            <span class="hero-chip">Итог за день</span>
+            <span class="hero-subtitle">Чистый доход после вычета комиссии</span>
+          </div>
+          <div class="shift-badge-pill" id="summary-status-badge">2 поездки</div>
+        </div>
+
+        <div class="hero-main-stat">
+          <div class="hero-amount-wrap">
+            <span class="hero-amount" id="summary-net">3 315</span>
+            <span class="hero-currency">₸</span>
+          </div>
+          <div class="hero-hint">на руки водителю</div>
+        </div>
+
+        <!-- Сетка второстепенных показателей -->
+        <div class="hero-metrics-grid">
+          <div class="metric-card">
+            <div class="metric-header">
+              <span class="metric-title">Выручка</span>
+              <span class="metric-icon-bubble">📈</span>
             </div>
-            <div class="kpi-badge" id="summary-status-badge">Смена закрыта</div>
+            <div class="metric-value" id="summary-revenue">3 900 ₸</div>
+            <div class="metric-sub" id="summary-trips-count">2 поездки за смену</div>
           </div>
 
-          <div class="kpi-grid">
-            <div class="kpi-cell">
-              <span class="kpi-cell-label">Выручка</span>
-              <span class="kpi-cell-value" id="summary-revenue">0 ₸</span>
-              <span class="kpi-cell-sub" id="summary-trips-count">0 поездок</span>
+          <div class="metric-card">
+            <div class="metric-header">
+              <span class="metric-title">Комиссия сервиса</span>
+              <span class="metric-icon-bubble">📉</span>
             </div>
-            
-            <div class="kpi-cell">
-              <span class="kpi-cell-label">Комиссия</span>
-              <span class="kpi-cell-value text-muted-red" id="summary-commission">0 ₸</span>
-              <span class="kpi-cell-sub" id="summary-commission-rate">0%</span>
-            </div>
+            <div class="metric-value text-accent-red" id="summary-commission">−585 ₸</div>
+            <div class="metric-sub" id="summary-commission-rate">15% от выручки</div>
+          </div>
 
-            <div class="kpi-cell">
-              <span class="kpi-cell-label">Безнал / Наличные</span>
-              <span class="kpi-cell-value" id="summary-payments-text">0 / 0 ₸</span>
-              <div class="split-bar">
-                <div class="split-bar-card" id="split-bar-card" style="width: 50%;"></div>
-                <div class="split-bar-cash" id="split-bar-cash" style="width: 50%;"></div>
-              </div>
+          <div class="metric-card metric-card-wide">
+            <div class="metric-header">
+              <span class="metric-title">Способы оплаты</span>
+              <span class="metric-legend" id="summary-payments-text">карта 2 400 ₸ · нал 1 500 ₸</span>
+            </div>
+            <div class="progress-bar-track">
+              <div class="progress-fill-card" id="split-bar-card" style="width: 61.5%;"></div>
+              <div class="progress-fill-cash" id="split-bar-cash" style="width: 38.5%;"></div>
+            </div>
+            <div class="progress-labels">
+              <span>💳 Безналичные (карта)</span>
+              <span>💵 Наличные</span>
             </div>
           </div>
         </div>
       </section>
 
-      <!-- Список поездок -->
+      <!-- Список поездок смены -->
       <section class="trips-section">
-        <div class="trips-section-header">
-          <div class="trips-heading-wrap">
-            <h2>Список поездок</h2>
-            <span class="badge" id="trips-count-badge">0</span>
+        <div class="trips-top-bar">
+          <div class="trips-title-wrap">
+            <h2>Поездки смены</h2>
+            <span class="counter-pill" id="trips-count-badge">2</span>
+          </div>
+          <div class="trips-actions">
+            <span class="shortcut-hint">Навигация: ← / →</span>
           </div>
         </div>
 
-        <div id="trips-list-container" class="trips-list">
-          <!-- Карточки поездок вставляются через JS -->
+        <div id="trips-list-container" class="trips-feed">
+          <!-- Карточки поездок рендерятся через JS -->
         </div>
       </section>
     </main>
 
     <footer class="app-footer">
-      <div class="footer-content">
-        <span>Дневник смен водителя · Тестовое задание для <strong>arqa</strong></span>
-        <span class="footer-links">
-          <a href="/docs" target="_blank">OpenAPI Docs</a>
-        </span>
+      <div class="footer-inner">
+        <div class="footer-left">
+          <span>arqa mobility · Тестовый проект «Дневник смен водителя»</span>
+        </div>
+        <div class="footer-right">
+          <a href="/docs" target="_blank">Swagger OpenAPI</a>
+          <span class="sep">·</span>
+          <span>FastAPI + Python</span>
+        </div>
       </div>
     </footer>
   </div>
 
   <!-- Модальное окно добавления поездки -->
   <div class="modal-backdrop" id="add-trip-modal" aria-hidden="true">
-    <div class="modal-card" role="dialog" aria-labelledby="modal-title">
-      <div class="modal-header">
-        <div>
-          <h3 id="modal-title" class="modal-title">Добавить поездку</h3>
-          <p class="modal-subtitle">Данные автоматически проверяются сервером с защитой от дублей</p>
+    <div class="modal-sheet" role="dialog" aria-labelledby="modal-title">
+      <div class="modal-top">
+        <div class="modal-heading-block">
+          <h3 id="modal-title">Новая поездка</h3>
+          <p>Сервер автоматически проверяет корректность и защищает от дублей</p>
         </div>
-        <button type="button" class="btn-close" id="modal-close-btn" aria-label="Закрыть">&times;</button>
+        <button type="button" class="close-btn" id="modal-close-btn" aria-label="Закрыть">✕</button>
       </div>
 
       <form id="add-trip-form" class="modal-form">
-        <div class="form-group">
-          <label for="trip-start">Время начала</label>
-          <input type="datetime-local" id="trip-start" name="start" required class="form-input">
+        <div class="form-field">
+          <label for="trip-start">Начало поездки</label>
+          <input type="datetime-local" id="trip-start" name="start" required class="input-ctrl">
         </div>
 
-        <div class="form-group">
-          <div class="label-with-actions">
-            <label for="trip-end">Время окончания</label>
+        <div class="form-field">
+          <div class="field-label-row">
+            <label for="trip-end">Окончание поездки</label>
             <div class="quick-chips">
-              <button type="button" class="btn-chip" id="add-15m-btn">+15 мин</button>
-              <button type="button" class="btn-chip" id="add-30m-btn">+30 мин</button>
+              <button type="button" class="mini-chip" id="add-15m-btn">+15м</button>
+              <button type="button" class="mini-chip" id="add-30m-btn">+30м</button>
             </div>
           </div>
-          <input type="datetime-local" id="trip-end" name="end" required class="form-input">
-          <span class="form-hint">Должно быть строго позже времени начала</span>
+          <input type="datetime-local" id="trip-end" name="end" required class="input-ctrl">
+          <span class="field-hint">Окончание должно быть позже времени начала</span>
         </div>
 
-        <div class="form-row-2">
-          <div class="form-group">
-            <label for="trip-amount">Сумма поездки (₸)</label>
-            <input type="number" id="trip-amount" name="amount" min="1" step="50" placeholder="2500" required class="form-input">
+        <div class="form-grid-2">
+          <div class="form-field">
+            <label for="trip-amount">Сумма (₸)</label>
+            <input type="number" id="trip-amount" name="amount" min="1" step="50" placeholder="2500" required class="input-ctrl">
           </div>
 
-          <div class="form-group">
-            <div class="label-with-actions">
+          <div class="form-field">
+            <div class="field-label-row">
               <label for="trip-commission">Комиссия (₸)</label>
-              <button type="button" class="btn-chip" id="calc-15-commission-btn">15%</button>
+              <button type="button" class="mini-chip" id="calc-15-commission-btn">Рассчитать 15%</button>
             </div>
-            <input type="number" id="trip-commission" name="commission" min="0" step="5" placeholder="375" required class="form-input">
+            <input type="number" id="trip-commission" name="commission" min="0" step="5" placeholder="375" required class="input-ctrl">
           </div>
         </div>
 
-        <div class="form-group">
+        <div class="form-field">
           <label>Способ оплаты</label>
-          <div class="segmented-control">
-            <label class="segmented-item">
+          <div class="segmented-picker">
+            <label class="seg-item">
               <input type="radio" name="payment" value="card" checked>
-              <span class="segmented-label">💳 Безналичные (карта)</span>
+              <span class="seg-pill">💳 Безналичные (карта)</span>
             </label>
-            <label class="segmented-item">
+            <label class="seg-item">
               <input type="radio" name="payment" value="cash">
-              <span class="segmented-label">💵 Наличные</span>
+              <span class="seg-pill">💵 Наличные</span>
             </label>
           </div>
         </div>
 
-        <div class="form-group">
-          <label for="trip-id">ID поездки <span class="text-muted">(необязательно)</span></label>
-          <input type="text" id="trip-id" name="id" placeholder="Оставьте пустым для автогенерации" class="form-input">
-          <span class="form-hint">Ключ идемпотентности — повторная отправка вернёт существующую запись без создания дубля</span>
+        <div class="form-field">
+          <label for="trip-id">ID поездки <span class="muted">(необязательно)</span></label>
+          <input type="text" id="trip-id" name="id" placeholder="Оставьте пустым для автогенерации" class="input-ctrl">
+          <span class="field-hint">Защита от дублей: повторный запрос с тем же ID или данными не создаст дубль</span>
         </div>
 
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" id="fill-sample-btn">
+        <div class="modal-actions">
+          <button type="button" class="btn-ghost" id="fill-sample-btn" title="Заполнить данными из ТЗ">
             Пример из ТЗ
           </button>
-          <button type="submit" class="btn btn-primary" id="submit-trip-btn">
+          <button type="submit" class="btn-submit" id="submit-trip-btn">
             Сохранить поездку
           </button>
         </div>
@@ -203,8 +245,8 @@
     </div>
   </div>
 
-  <!-- Контейнер для системных уведомлений -->
-  <div class="toast-container" id="toast-container" aria-live="polite"></div>
+  <!-- Контейнер для всплывающих уведомлений -->
+  <div class="toast-stack" id="toast-container" aria-live="polite"></div>
 
   <script src="/static/app.js"></script>
 </body>
