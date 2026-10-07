@@ -128,9 +128,32 @@ function escapeHtml(s) {
   }[c]));
 }
 
+function updateScrollLock() {
+  const isAnyOpen = (el.modalBackdrop && el.modalBackdrop.classList.contains("is-open")) ||
+                    (el.calendarModal && el.calendarModal.classList.contains("is-open"));
+  document.body.classList.toggle("modal-open", isAnyOpen);
+}
+
 function showToast(message, type = "info") {
+  // Защита от спама: если такой тост уже отображается, не создаем дубликат
+  const existing = Array.from(el.toasts.children).find(
+    (t) => t.dataset.message === message
+  );
+  if (existing) {
+    existing.classList.remove("toast-pulse");
+    void existing.offsetWidth; // перезапуск анимации
+    existing.classList.add("toast-pulse");
+    return;
+  }
+
+  // Ограничиваем очередь тостов (максимум 2 одновременных)
+  while (el.toasts.children.length >= 2) {
+    el.toasts.removeChild(el.toasts.firstElementChild);
+  }
+
   const toast = document.createElement("div");
   toast.className = `toast toast-${type}`;
+  toast.dataset.message = message;
   const icon = type === "error" ? "⚠️" : type === "success" ? "✅" : "ℹ️";
   toast.innerHTML = `<span>${icon}</span><div>${escapeHtml(message)}</div>`;
   el.toasts.appendChild(toast);
@@ -140,7 +163,7 @@ function showToast(message, type = "info") {
     toast.style.opacity = "0";
     toast.style.transform = "translateY(8px)";
     setTimeout(() => toast.remove(), 250);
-  }, 4000);
+  }, 3500);
 }
 
 /* ---------------- Смены и даты ---------------- */
@@ -237,11 +260,13 @@ function openCalendarModal() {
   renderCalendarGrid();
   el.calendarModal.classList.add("is-open");
   el.calendarModal.setAttribute("aria-hidden", "false");
+  updateScrollLock();
 }
 
 function closeCalendarModal() {
   el.calendarModal.classList.remove("is-open");
   el.calendarModal.setAttribute("aria-hidden", "true");
+  updateScrollLock();
 }
 
 const isCalendarOpen = () => el.calendarModal && el.calendarModal.classList.contains("is-open");
@@ -514,15 +539,17 @@ function openAddModal() {
 
   el.modalBackdrop.classList.add("is-open");
   el.modalBackdrop.setAttribute("aria-hidden", "false");
+  updateScrollLock();
   setTimeout(() => el.tripAmount.focus(), 60);
 }
 
 function closeAddModal() {
   el.modalBackdrop.classList.remove("is-open");
   el.modalBackdrop.setAttribute("aria-hidden", "true");
+  updateScrollLock();
 }
 
-const isAddModalOpen = () => el.modalBackdrop.classList.contains("is-open");
+const isAddModalOpen = () => el.modalBackdrop && el.modalBackdrop.classList.contains("is-open");
 
 function calcCommission() {
   const amount = parseFloat(el.tripAmount.value) || 0;
