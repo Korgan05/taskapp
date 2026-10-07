@@ -257,12 +257,20 @@ function renderTrips(trips) {
   });
 }
 
+function formatLocalDate(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
 // Переключение предыдущий / следующий день
 function shiftDay(daysOffset) {
   const [y, m, d] = state.currentDate.split("-").map(Number);
-  const date = new Date(y, m - 1, d);
+  // Задаем полдень (12:00), чтобы исключить любые смещения часовых поясов
+  const date = new Date(y, m - 1, d, 12, 0, 0);
   date.setDate(date.getDate() + daysOffset);
-  const newDateStr = date.toISOString().split("T")[0];
+  const newDateStr = formatLocalDate(date);
   switchDate(newDateStr);
 }
 
@@ -442,7 +450,7 @@ async function init() {
   } else if (state.availableDates.length > 0) {
     switchDate(state.availableDates[0]);
   } else {
-    switchDate(new Date().toISOString().split("T")[0]);
+    switchDate(formatLocalDate(new Date()));
   }
 }
 

@@ -269,6 +269,10 @@ button, .btn-primary, .btn-ghost {
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
+  z-index: 5;
+  flex: none;
+  user-select: none;
 }
 
 .nav-arrow-btn:hover {
