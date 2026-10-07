@@ -78,6 +78,18 @@ def test_day_boundary_uses_local_time_not_utc():
     assert TripService.calculate_summary(trips, "2026-10-02").trips_count == 0
 
 
+def test_utc_normalized_trips_converted_to_driver_timezone():
+    """
+    Если сторонний сервис прислал ночную алматинскую поездку в формате UTC:
+    2026-09-30T21:00:00+00:00 (что строго соответствует 2026-10-01 02:00:00+05:00),
+    она должна быть отнесена к алматинской смене 2026-10-01, а не к 2026-09-30.
+    """
+    trip_utc = make_trip("utc_trip", "2026-09-30T21:00:00+00:00", "2026-09-30T21:30:00+00:00", 2500, "card", 375)
+    assert TripService.trip_day(trip_utc) == date(2026, 10, 1)
+    assert TripService.calculate_summary([trip_utc], "2026-10-01").trips_count == 1
+    assert TripService.calculate_summary([trip_utc], "2026-09-30").trips_count == 0
+
+
 def test_fractional_amounts_are_rounded():
     trips = [
         make_trip("a", "2026-10-01T08:00:00+05:00", "2026-10-01T08:10:00+05:00", 0.1, "cash", 0.0),

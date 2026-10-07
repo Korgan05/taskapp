@@ -99,7 +99,10 @@ function diffDays(a, b) {
 }
 
 function formatMoney(amount) {
-  return new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(amount);
+  return new Intl.NumberFormat("ru-RU", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(amount);
 }
 
 function formatRelativeLabel(dateStr) {

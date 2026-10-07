@@ -1,9 +1,12 @@
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 from typing import List, Optional, Union
 
 from app.models import DaySummary, PaymentBreakdown, PaymentMethod, Trip, TripCreate
 
 DayLike = Union[date, str]
+
+# Локальный часовой пояс водителя (Алматы, Казахстан, UTC+05:00)
+DRIVER_TZ = timezone(timedelta(hours=5))
 
 
 class TripIdConflict(Exception):
@@ -20,22 +23,26 @@ def _as_date(day: DayLike) -> date:
 
 class TripService:
     @staticmethod
-    def trip_day(trip: Trip) -> date:
+    def trip_day(trip: Trip, tz: timezone = DRIVER_TZ) -> date:
         """
-        День смены = календарная дата начала поездки в её собственном часовом поясе.
+        День смены = календарная дата начала поездки в локальном часовом поясе водителя (+05:00).
+        Корректно приводит aware datetime из любого ISO-офсета (включая UTC/Z) к часовому поясу смены.
         Поездка 01.10 23:50 → 02.10 00:20 относится к 01.10.
         """
-        return trip.start.date()
+        start = trip.start
+        if start.tzinfo is not None:
+            start = start.astimezone(tz)
+        return start.date()
 
     @classmethod
-    def filter_by_date(cls, trips: List[Trip], day: DayLike) -> List[Trip]:
+    def filter_by_date(cls, trips: List[Trip], day: DayLike, tz: timezone = DRIVER_TZ) -> List[Trip]:
         d = _as_date(day)
-        return sorted((t for t in trips if cls.trip_day(t) == d), key=lambda t: t.start)
+        return sorted((t for t in trips if cls.trip_day(t, tz) == d), key=lambda t: t.start)
 
     @classmethod
-    def calculate_summary(cls, trips: List[Trip], day: DayLike) -> DaySummary:
+    def calculate_summary(cls, trips: List[Trip], day: DayLike, tz: timezone = DRIVER_TZ) -> DaySummary:
         d = _as_date(day)
-        day_trips = cls.filter_by_date(trips, d)
+        day_trips = cls.filter_by_date(trips, d, tz)
 
         revenue = round(sum(t.amount for t in day_trips), 2)
         commission = round(sum(t.commission for t in day_trips), 2)
@@ -85,5 +92,5 @@ class TripService:
         return None
 
     @classmethod
-    def get_available_dates(cls, trips: List[Trip]) -> List[str]:
-        return sorted({cls.trip_day(t).isoformat() for t in trips})
+    def get_available_dates(cls, trips: List[Trip], tz: timezone = DRIVER_TZ) -> List[str]:
+        return sorted({cls.trip_day(t, tz).isoformat() for t in trips})
