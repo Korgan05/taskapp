@@ -257,20 +257,22 @@ body {
   position: relative;
 }
 
-.date-title-btn {
-  background: none;
-  border: none;
+.date-center-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  padding: 6px 14px;
   cursor: pointer;
-  display: inline-flex;
+  display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 4px 12px;
-  border-radius: var(--radius-sm);
-  transition: background 0.15s ease;
+  transition: all 0.15s ease;
+  width: 100%;
 }
 
-.date-title-btn:hover {
+.date-center-btn:hover {
   background: var(--bg-subtle);
+  border-color: var(--border-card);
 }
 
 .date-main-text {
@@ -286,16 +288,6 @@ body {
   font-weight: 500;
   color: var(--text-secondary);
   margin-top: 2px;
-}
-
-.date-input-hidden {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  opacity: 0;
-  pointer-events: none;
 }
 
 /* Лента дней недели */
@@ -373,38 +365,36 @@ body {
   color: var(--accent-blue);
 }
 
-.shift-quick-actions {
+.date-sub-actions {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding-top: 4px;
+  padding-top: 8px;
 }
 
-.chip-action {
-  background: none;
-  border: none;
+.sub-action-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
   color: var(--accent-blue);
   font-family: var(--font-body);
   font-size: 13px;
   font-weight: 600;
+  padding: 6px 12px;
   cursor: pointer;
-  padding: 4px 8px;
-  border-radius: 6px;
-  transition: background 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
 }
 
-.chip-action:hover:not(:disabled) {
+.sub-action-btn:hover {
   background: var(--bg-subtle);
+  border-color: var(--border-card);
 }
 
-.chip-action:disabled {
-  color: var(--text-muted);
-  cursor: default;
-  opacity: 0.5;
-}
-
-.chip-today {
-  color: var(--text-primary);
+.sub-btn-icon {
+  font-size: 14px;
 }
 
 /* Главная карточка доходов смены */
@@ -617,19 +607,81 @@ body {
   background: var(--bg-card);
   border: 1px solid var(--border-card);
   border-radius: var(--radius-md);
-  padding: 16px 20px;
+  padding: 0;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  transition: all 0.18s ease;
+  flex-direction: column;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  cursor: pointer;
 }
 
 .trip-item-card:hover {
   border-color: var(--border-card-hover);
   background: var(--bg-card-hover);
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+}
+
+.trip-card-summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+}
+
+.trip-expand-chevron {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-left: 6px;
+  transition: transform 0.2s ease;
+  display: inline-block;
+}
+
+.trip-item-card.is-expanded .trip-expand-chevron {
+  transform: rotate(180deg);
+  color: var(--accent-blue);
+}
+
+.trip-card-details {
+  display: none;
+  padding: 14px 20px 16px;
+  background: var(--bg-subtle);
+  border-top: 1px solid var(--border-card);
+  animation: fadeIn 0.15s ease;
+}
+
+.trip-item-card.is-expanded .trip-card-details {
+  display: block;
+}
+
+.trip-details-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px 20px;
+}
+
+.detail-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+}
+
+.detail-label {
+  color: var(--text-muted);
+}
+
+.detail-value {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.detail-value.font-mono {
+  font-family: var(--font-mono);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .trip-col-left {
@@ -987,6 +1039,163 @@ body {
 
 .btn-submit:hover {
   transform: translateY(-1px);
+}
+
+/* Стили модального окна интерактивного календаря */
+.calendar-sheet {
+  max-width: 420px;
+  padding: 24px;
+}
+
+.calendar-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+
+.calendar-month-nav {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.calendar-month-label {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  min-width: 140px;
+  text-align: center;
+}
+
+.arrow-btn-sm {
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-sm);
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-primary);
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.arrow-btn-sm:hover {
+  background: var(--accent-blue);
+  border-color: var(--accent-blue);
+  color: #FFF;
+}
+
+.calendar-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin-bottom: 8px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin-bottom: 16px;
+}
+
+.calendar-day-cell {
+  aspect-ratio: 1;
+  background: var(--bg-subtle);
+  border: 1.5px solid transparent;
+  border-radius: var(--radius-sm);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.calendar-day-cell.other-month {
+  opacity: 0.25;
+  color: var(--text-muted);
+  background: transparent;
+}
+
+.calendar-day-cell:hover:not(.other-month) {
+  background: var(--bg-card-hover);
+  border-color: var(--accent-blue);
+}
+
+.calendar-day-cell.has-trips {
+  border-color: rgba(16, 185, 129, 0.4);
+}
+
+.calendar-day-cell.has-trips::after {
+  content: "";
+  position: absolute;
+  bottom: 3px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent-emerald);
+}
+
+.calendar-day-cell.is-selected {
+  background: var(--accent-blue);
+  color: #FFF;
+  border-color: var(--accent-blue);
+  box-shadow: 0 4px 12px var(--accent-blue-glow);
+}
+
+.calendar-day-cell.is-selected::after {
+  background: #FFF;
+}
+
+.calendar-day-cell.is-today:not(.is-selected) {
+  border-color: var(--accent-blue);
+  color: var(--accent-blue);
+}
+
+.calendar-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 14px;
+  border-top: 1px solid var(--border-card);
+}
+
+.calendar-legend {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.legend-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent-emerald);
+  display: inline-block;
+}
+
+.btn-sm {
+  padding: 6px 14px;
+  font-size: 12px;
 }
 
 /* Уведомления */

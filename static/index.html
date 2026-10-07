@@ -30,10 +30,10 @@
       </div>
 
       <div class="nav-controls">
-        <button type="button" id="theme-toggle-btn" class="nav-btn-icon" title="Сменить тему оформления" aria-label="Сменить тему">
+        <button type="button" id="theme-toggle-btn" class="nav-btn-icon" aria-label="Сменить тему оформления">
           <span class="theme-icon">🌙</span>
         </button>
-        <a href="/docs" target="_blank" class="nav-btn-link" title="OpenAPI Swagger документация">
+        <a href="/docs" target="_blank" class="nav-btn-link">
           <span class="api-tag">API</span> Docs
         </a>
         <button type="button" id="open-add-modal-btn" class="btn-cta">
@@ -43,41 +43,35 @@
     </header>
 
     <main class="main-content">
-      <!-- Навигатор по дням и сменам -->
+      <!-- Навигатор по датам -->
       <section class="date-navigator-card">
         <div class="nav-day-row">
-          <button type="button" id="prev-day-btn" class="arrow-btn" aria-label="Предыдущий день" title="Предыдущий день (клавиша ←)">
+          <button type="button" id="prev-day-btn" class="arrow-btn" aria-label="Предыдущий день">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
           </button>
 
-          <div class="current-date-center">
-            <button type="button" id="date-display-btn" class="date-title-btn" title="Выбрать в календаре">
-              <span id="date-display-text" class="date-main-text">01 октября 2026</span>
-              <span id="date-relative-tag" class="date-day-badge">Четверг</span>
-            </button>
-            <input type="date" id="date-picker-input" class="date-input-hidden" aria-label="Выбрать дату">
-          </div>
+          <button type="button" class="current-date-center date-center-btn" id="date-display-btn" aria-label="Выбрать дату в календаре">
+            <div id="date-display-text" class="date-main-text">01 октября 2026</div>
+            <div id="date-relative-tag" class="date-day-badge">Четверг · нажать для календаря 📅</div>
+          </button>
 
-          <button type="button" id="next-day-btn" class="arrow-btn" aria-label="Следующий день" title="Следующий день (клавиша →)">
+          <button type="button" id="next-day-btn" class="arrow-btn" aria-label="Следующий день">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
           </button>
         </div>
 
-        <!-- Лента дней недели -->
+        <!-- Лента недели с индикаторами смен -->
         <div class="week-strip-wrap">
           <div class="week-strip" id="week-strip"></div>
         </div>
 
-        <!-- Быстрые переходы между сменами -->
-        <div class="shift-quick-actions">
-          <button type="button" id="prev-shift-btn" class="chip-action">
-            <span>‹</span> Пред. смена
+        <!-- Быстрые действия без дублирующих стрелок -->
+        <div class="date-sub-actions">
+          <button type="button" id="open-calendar-btn" class="sub-action-btn">
+            <span class="sub-btn-icon">📅</span> Календарь на месяц
           </button>
-          <button type="button" id="today-btn" class="chip-action chip-today">
+          <button type="button" id="today-btn" class="sub-action-btn">
             Сегодня
-          </button>
-          <button type="button" id="next-shift-btn" class="chip-action">
-            След. смена <span>›</span>
           </button>
         </div>
       </section>
@@ -100,7 +94,7 @@
           <div class="hero-hint">на руки водителю</div>
         </div>
 
-        <!-- Сетка второстепенных показателей -->
+        <!-- Сетка показателей -->
         <div class="hero-metrics-grid">
           <div class="metric-card">
             <div class="metric-header">
@@ -144,9 +138,6 @@
             <h2>Поездки смены</h2>
             <span class="counter-pill" id="trips-count-badge">2</span>
           </div>
-          <div class="trips-actions">
-            <span class="shortcut-hint">Навигация: ← / →</span>
-          </div>
         </div>
 
         <div id="trips-list-container" class="trips-feed">
@@ -167,6 +158,35 @@
         </div>
       </div>
     </footer>
+  </div>
+
+  <!-- Модальное окно календаря месяца -->
+  <div class="modal-backdrop" id="calendar-modal" aria-hidden="true">
+    <div class="modal-sheet calendar-sheet" role="dialog" aria-labelledby="calendar-modal-title">
+      <div class="calendar-modal-header">
+        <div class="calendar-month-nav">
+          <button type="button" class="arrow-btn-sm" id="cal-prev-month-btn">‹</button>
+          <h3 id="calendar-month-title" class="calendar-month-label">Октябрь 2026</h3>
+          <button type="button" class="arrow-btn-sm" id="cal-next-month-btn">›</button>
+        </div>
+        <button type="button" class="close-btn" id="calendar-close-btn" aria-label="Закрыть">✕</button>
+      </div>
+
+      <div class="calendar-weekdays">
+        <span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span><span>Вс</span>
+      </div>
+
+      <div class="calendar-grid" id="calendar-grid">
+        <!-- Ячейки календаря заполняются через JS -->
+      </div>
+
+      <div class="calendar-footer">
+        <div class="calendar-legend">
+          <span class="legend-dot"></span> Дни с поездками
+        </div>
+        <button type="button" class="btn-secondary btn-sm" id="cal-today-btn">Сегодня</button>
+      </div>
+    </div>
   </div>
 
   <!-- Модальное окно добавления поездки -->
@@ -234,7 +254,7 @@
         </div>
 
         <div class="modal-actions">
-          <button type="button" class="btn-ghost" id="fill-sample-btn" title="Заполнить данными из ТЗ">
+          <button type="button" class="btn-ghost" id="fill-sample-btn">
             Пример из ТЗ
           </button>
           <button type="submit" class="btn-submit" id="submit-trip-btn">

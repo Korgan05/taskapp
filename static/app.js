@@ -1,6 +1,6 @@
 /**
  * arqa mobility · Дневник смен водителя
- * Клиентская логика: календарь, аналитика смены, API, темы, горячие клавиши.
+ * Клиентская логика: интерактивный календарь месяца, недельная лента, аналитика смены, API, темы, горячие клавиши.
  */
 
 const TZ_OFFSET = "+05:00"; // Локальный часовой пояс водителя (Алматы, Казахстан)
@@ -11,6 +11,8 @@ const state = {
   loadSeq: 0,
   loadAbort: null,
   submitting: false,
+  calYear: null,
+  calMonth: null, // 0-11
 };
 
 const $ = (id) => document.getElementById(id);
@@ -22,11 +24,17 @@ const el = {
   dateDisplayBtn: $("date-display-btn"),
   dateDisplayText: $("date-display-text"),
   dateRelativeTag: $("date-relative-tag"),
-  datePickerInput: $("date-picker-input"),
   weekStrip: $("week-strip"),
-  prevShiftBtn: $("prev-shift-btn"),
+  openCalendarBtn: $("open-calendar-btn"),
   todayBtn: $("today-btn"),
-  nextShiftBtn: $("next-shift-btn"),
+
+  calendarModal: $("calendar-modal"),
+  calendarCloseBtn: $("calendar-close-btn"),
+  calPrevMonthBtn: $("cal-prev-month-btn"),
+  calNextMonthBtn: $("cal-next-month-btn"),
+  calendarMonthTitle: $("calendar-month-title"),
+  calendarGrid: $("calendar-grid"),
+  calTodayBtn: $("cal-today-btn"),
 
   summaryNet: $("summary-net"),
   summaryStatusBadge: $("summary-status-badge"),
@@ -58,6 +66,11 @@ const el = {
 
   toasts: $("toast-container"),
 };
+
+const monthNames = [
+  "Январь", "Февраль", "Март", "Апрель", "Май", "Июнь",
+  "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"
+];
 
 /* ---------------- Форматирование чисел и дат ---------------- */
 
@@ -170,8 +183,6 @@ function switchDate(dateStr) {
 
 function renderDateHeader() {
   const d = state.currentDate;
-  el.datePickerInput.value = d;
-
   const dateObj = parseDateStr(d);
   const dateFormatted = dateObj.toLocaleDateString("ru-RU", {
     day: "numeric",
@@ -180,16 +191,11 @@ function renderDateHeader() {
   }).replace(" г.", "");
 
   el.dateDisplayText.textContent = dateFormatted;
-  el.dateRelativeTag.textContent = formatRelativeLabel(d);
+  el.dateRelativeTag.textContent = `${formatRelativeLabel(d)} · нажать для календаря 📅`;
 
-  const prev = prevShiftDate(d);
-  const next = nextShiftDate(d);
-  el.prevShiftBtn.disabled = !prev;
-  el.nextShiftBtn.disabled = !next;
-  el.todayBtn.disabled = d === todayStr();
-
-  el.prevShiftBtn.title = prev ? `К смене ${prev.split("-").reverse().join(".")}` : "Раньше смен нет";
-  el.nextShiftBtn.title = next ? `К смене ${next.split("-").reverse().join(".")}` : "Позже смен нет";
+  if (el.todayBtn) {
+    el.todayBtn.disabled = d === todayStr();
+  }
 }
 
 function renderWeekStrip() {
@@ -222,14 +228,112 @@ function renderWeekStrip() {
   }
 }
 
-function openCalendarPicker() {
-  if (typeof el.datePickerInput.showPicker === "function") {
-    try {
-      el.datePickerInput.showPicker();
-      return;
-    } catch (_) {}
+/* ---------------- Интерактивный календарь на месяц ---------------- */
+
+function openCalendarModal() {
+  const d = parseDateStr(state.currentDate || todayStr());
+  state.calYear = d.getFullYear();
+  state.calMonth = d.getMonth();
+  renderCalendarGrid();
+  el.calendarModal.classList.add("is-open");
+  el.calendarModal.setAttribute("aria-hidden", "false");
+}
+
+function closeCalendarModal() {
+  el.calendarModal.classList.remove("is-open");
+  el.calendarModal.setAttribute("aria-hidden", "true");
+}
+
+const isCalendarOpen = () => el.calendarModal && el.calendarModal.classList.contains("is-open");
+
+function calPrevMonth() {
+  if (state.calMonth === 0) {
+    state.calMonth = 11;
+    state.calYear -= 1;
+  } else {
+    state.calMonth -= 1;
   }
-  el.datePickerInput.click();
+  renderCalendarGrid();
+}
+
+function calNextMonth() {
+  if (state.calMonth === 11) {
+    state.calMonth = 0;
+    state.calYear += 1;
+  } else {
+    state.calMonth += 1;
+  }
+  renderCalendarGrid();
+}
+
+function renderCalendarGrid() {
+  const y = state.calYear;
+  const m = state.calMonth;
+  el.calendarMonthTitle.textContent = `${monthNames[m]} ${y}`;
+  el.calendarGrid.innerHTML = "";
+
+  const firstDay = new Date(y, m, 1);
+  let firstDayIndex = firstDay.getDay() - 1;
+  if (firstDayIndex === -1) firstDayIndex = 6;
+
+  const daysInCurrentMonth = new Date(y, m + 1, 0).getDate();
+  const daysInPrevMonth = new Date(y, m, 0).getDate();
+
+  const today = todayStr();
+  const selected = state.currentDate;
+
+  // Дни предыдущего месяца
+  for (let i = firstDayIndex - 1; i >= 0; i--) {
+    const dayNum = daysInPrevMonth - i;
+    const prevDate = new Date(y, m - 1, dayNum);
+    const dateStr = toDateStr(prevDate);
+    const cell = document.createElement("button");
+    cell.type = "button";
+    cell.className = "calendar-day-cell other-month";
+    if (hasTrips(dateStr)) cell.classList.add("has-trips");
+    cell.textContent = dayNum;
+    cell.addEventListener("click", () => {
+      switchDate(dateStr);
+      closeCalendarModal();
+    });
+    el.calendarGrid.appendChild(cell);
+  }
+
+  // Дни текущего месяца
+  for (let dayNum = 1; dayNum <= daysInCurrentMonth; dayNum++) {
+    const dateStr = `${y}-${pad(m + 1)}-${pad(dayNum)}`;
+    const cell = document.createElement("button");
+    cell.type = "button";
+    cell.className = "calendar-day-cell";
+    if (dateStr === selected) cell.classList.add("is-selected");
+    if (dateStr === today) cell.classList.add("is-today");
+    if (hasTrips(dateStr)) cell.classList.add("has-trips");
+    cell.textContent = dayNum;
+    cell.addEventListener("click", () => {
+      switchDate(dateStr);
+      closeCalendarModal();
+    });
+    el.calendarGrid.appendChild(cell);
+  }
+
+  // Завершение сетки днями следующего месяца
+  const totalCells = el.calendarGrid.children.length;
+  const targetCells = totalCells > 35 ? 42 : (totalCells <= 28 ? 28 : 35);
+  const remaining = targetCells - totalCells;
+  for (let dayNum = 1; dayNum <= remaining; dayNum++) {
+    const nextDate = new Date(y, m + 1, dayNum);
+    const dateStr = toDateStr(nextDate);
+    const cell = document.createElement("button");
+    cell.type = "button";
+    cell.className = "calendar-day-cell other-month";
+    if (hasTrips(dateStr)) cell.classList.add("has-trips");
+    cell.textContent = dayNum;
+    cell.addEventListener("click", () => {
+      switchDate(dateStr);
+      closeCalendarModal();
+    });
+    el.calendarGrid.appendChild(cell);
+  }
 }
 
 /* ---------------- Загрузка данных дня ---------------- */
@@ -323,31 +427,70 @@ function renderTrips(trips) {
     const endTime = formatIsoTime(trip.end);
     const durationMin = Math.max(1, Math.round((new Date(trip.end) - new Date(trip.start)) / 60000));
     const isCard = trip.payment === "card";
+    const netTrip = trip.amount - trip.commission;
+    const commPct = trip.amount > 0 ? Math.round((trip.commission / trip.amount) * 100) : 0;
 
     const card = document.createElement("div");
     card.className = "trip-item-card";
     card.innerHTML = `
-      <div class="trip-col-left">
-        <div class="trip-taxi-badge">🚕</div>
-        <div>
-          <div class="trip-time-title">${startTime} → ${endTime}</div>
-          <div class="trip-meta-tags">
-            <span>⏱️ ${durationMin} мин</span>
-            <span>·</span>
-            <span>ID: <code>${escapeHtml(trip.id)}</code></span>
+      <div class="trip-card-summary">
+        <div class="trip-col-left">
+          <div class="trip-taxi-badge">🚕</div>
+          <div>
+            <div class="trip-time-title">${startTime} → ${endTime}</div>
+            <div class="trip-meta-tags">
+              <span>⏱️ ${durationMin} мин</span>
+              <span>·</span>
+              <span>ID: <code>${escapeHtml(trip.id)}</code></span>
+            </div>
+          </div>
+        </div>
+        <div class="trip-col-right">
+          <div class="trip-amount-text">${formatMoney(trip.amount)} ₸</div>
+          <div class="trip-pill-group">
+            <span class="badge-pay ${isCard ? "card" : "cash"}">
+              ${isCard ? "💳 Карта" : "💵 Наличные"}
+            </span>
+            <span class="badge-fee">ком. −${formatMoney(trip.commission)} ₸</span>
+            <span class="trip-expand-chevron">▾</span>
           </div>
         </div>
       </div>
-      <div class="trip-col-right">
-        <div class="trip-amount-text">${formatMoney(trip.amount)} ₸</div>
-        <div class="trip-pill-group">
-          <span class="badge-pay ${isCard ? "card" : "cash"}">
-            ${isCard ? "💳 Карта" : "💵 Наличные"}
-          </span>
-          <span class="badge-fee">ком. −${formatMoney(trip.commission)} ₸</span>
+      <div class="trip-card-details">
+        <div class="trip-details-grid">
+          <div class="detail-item">
+            <span class="detail-label">На руки за заказ:</span>
+            <span class="detail-value text-accent-emerald">${formatMoney(netTrip)} ₸</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Тариф заказа:</span>
+            <span class="detail-value">${formatMoney(trip.amount)} ₸</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Комиссия сервиса:</span>
+            <span class="detail-value text-accent-red">−${formatMoney(trip.commission)} ₸ (${commPct}%)</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Длительность:</span>
+            <span class="detail-value font-mono">${startTime} – ${endTime} (${durationMin} мин)</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Способ расчета:</span>
+            <span class="detail-value">${isCard ? "Безналичный (на карту)" : "Наличными водителю"}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">ID поездки:</span>
+            <span class="detail-value font-mono">${escapeHtml(trip.id)}</span>
+          </div>
         </div>
       </div>
     `;
+
+    // Клик по карточке раскрывает подробности
+    card.addEventListener("click", () => {
+      card.classList.toggle("is-expanded");
+    });
+
     el.tripsList.appendChild(card);
   });
 }
@@ -358,7 +501,7 @@ const toInputDateTime = (d) => `${toDateStr(d)}T${pad(d.getHours())}:${pad(d.get
 
 function openAddModal() {
   const now = new Date();
-  const start = parseDateStr(state.currentDate);
+  const start = parseDateStr(state.currentDate || todayStr());
   start.setHours(now.getHours(), now.getMinutes(), 0, 0);
   const end = new Date(start.getTime() + 25 * 60000);
 
@@ -379,7 +522,7 @@ function closeAddModal() {
   el.modalBackdrop.setAttribute("aria-hidden", "true");
 }
 
-const isModalOpen = () => el.modalBackdrop.classList.contains("is-open");
+const isAddModalOpen = () => el.modalBackdrop.classList.contains("is-open");
 
 function calcCommission() {
   const amount = parseFloat(el.tripAmount.value) || 0;
@@ -517,57 +660,25 @@ function setupEventListeners() {
 
   el.prevDayBtn.addEventListener("click", () => switchDate(addDays(state.currentDate, -1)));
   el.nextDayBtn.addEventListener("click", () => switchDate(addDays(state.currentDate, 1)));
-  el.prevShiftBtn.addEventListener("click", () => {
-    const d = prevShiftDate(state.currentDate);
-    if (d) switchDate(d);
-  });
-  el.nextShiftBtn.addEventListener("click", () => {
-    const d = nextShiftDate(state.currentDate);
-    if (d) switchDate(d);
-  });
+
+  // Открытие календаря по клику на дату или на кнопку
+  el.dateDisplayBtn.addEventListener("click", openCalendarModal);
+  el.openCalendarBtn.addEventListener("click", openCalendarModal);
   el.todayBtn.addEventListener("click", () => switchDate(todayStr()));
 
-  el.dateDisplayBtn.addEventListener("click", openCalendarPicker);
-  el.datePickerInput.addEventListener("change", (e) => {
-    if (e.target.value) switchDate(e.target.value);
+  // Календарь модалка
+  el.calendarCloseBtn.addEventListener("click", closeCalendarModal);
+  el.calendarModal.addEventListener("click", (e) => {
+    if (e.target === el.calendarModal) closeCalendarModal();
+  });
+  el.calPrevMonthBtn.addEventListener("click", calPrevMonth);
+  el.calNextMonthBtn.addEventListener("click", calNextMonth);
+  el.calTodayBtn.addEventListener("click", () => {
+    switchDate(todayStr());
+    closeCalendarModal();
   });
 
-  // Горячие клавиши
-  document.addEventListener("keydown", (e) => {
-    if (isModalOpen()) {
-      if (e.key === "Escape") closeAddModal();
-      return;
-    }
-    if (/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)) return;
-
-    if (e.key === "ArrowLeft") {
-      e.preventDefault();
-      if (e.shiftKey) {
-        const d = prevShiftDate(state.currentDate);
-        if (d) switchDate(d);
-      } else {
-        switchDate(addDays(state.currentDate, -1));
-      }
-    } else if (e.key === "ArrowRight") {
-      e.preventDefault();
-      if (e.shiftKey) {
-        const d = nextShiftDate(state.currentDate);
-        if (d) switchDate(d);
-      } else {
-        switchDate(addDays(state.currentDate, 1));
-      }
-    }
-  });
-
-  // Хэш в адресной строке
-  window.addEventListener("hashchange", () => {
-    const d = location.hash.slice(1);
-    if (isValidDateStr(d) && d !== state.currentDate) {
-      switchDate(d);
-    }
-  });
-
-  // Модалка
+  // Модалка добавления поездки
   el.openModalBtn.addEventListener("click", openAddModal);
   el.modalCloseBtn.addEventListener("click", closeAddModal);
   el.modalBackdrop.addEventListener("click", (e) => {
@@ -580,12 +691,41 @@ function setupEventListeners() {
   el.add30mBtn.addEventListener("click", () => addDurationToEnd(30));
   el.fillSampleBtn.addEventListener("click", fillSampleData);
   el.form.addEventListener("submit", handleTripSubmit);
+
+  // Горячие клавиши
+  document.addEventListener("keydown", (e) => {
+    if (isAddModalOpen()) {
+      if (e.key === "Escape") closeAddModal();
+      return;
+    }
+    if (isCalendarOpen()) {
+      if (e.key === "Escape") closeCalendarModal();
+      return;
+    }
+    if (/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName)) return;
+
+    if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      switchDate(addDays(state.currentDate, -1));
+    } else if (e.key === "ArrowRight") {
+      e.preventDefault();
+      switchDate(addDays(state.currentDate, 1));
+    }
+  });
+
+  // Хэш в адресной строке
+  window.addEventListener("hashchange", () => {
+    const d = location.hash.slice(1);
+    if (isValidDateStr(d) && d !== state.currentDate) {
+      switchDate(d);
+    }
+  });
 }
 
 function pickInitialDate() {
   const fromHash = location.hash.slice(1);
   if (isValidDateStr(fromHash)) return fromHash;
-  // Сначала проверяем дату примера из ТЗ
+  // По умолчанию открываем дату примера из ТЗ если есть
   if (hasTrips("2026-10-01")) return "2026-10-01";
   const today = todayStr();
   if (hasTrips(today)) return today;
