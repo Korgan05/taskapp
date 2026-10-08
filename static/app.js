@@ -7,6 +7,7 @@ const TZ_OFFSET = "+05:00"; // Локальный часовой пояс вод
 
 const state = {
   currentDate: null,
+  currentDayData: null,
   availableDates: [],
   loadSeq: 0,
   loadAbort: null,

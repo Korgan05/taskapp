@@ -71,3 +71,4 @@ docker run -p 8000:8000 arqa-taskapp
   - Modal scroll lock: Lock `body.modal-open` (`overflow: hidden`) whenever any dialog or calendar is open.
   - Toast anti-spam: Deduplicate notifications so repeated actions never spam duplicate toasts.
   - Progressive disclosure: Clean overview by default, click-to-expand details for individual trips.
+  - V8/JSC Engine Performance: Maintain stable object shapes (all state properties declared upfront to preserve V8 `Map` transitions), avoid `delete` operators, avoid prototype mutation (keeping engine watchpoints/protectors intact), and maintain packed arrays (`PACKED_ELEMENTS`).
