@@ -312,9 +312,8 @@ body.modal-open {
 /* Лента дней недели */
 .week-strip-wrap {
   border-top: 1px solid var(--border-card);
-  border-bottom: 1px solid var(--border-card);
-  padding: 8px 0;
-  margin-bottom: 10px;
+  padding-top: 12px;
+  margin-bottom: 0;
 }
 
 .week-strip {
@@ -382,38 +381,6 @@ body.modal-open {
 
 .week-day-btn.is-today:not(.is-active) .wd-num {
   color: var(--accent-blue);
-}
-
-.date-sub-actions {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-top: 8px;
-}
-
-.sub-action-btn {
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: var(--radius-sm);
-  color: var(--accent-blue);
-  font-family: var(--font-body);
-  font-size: 13px;
-  font-weight: 600;
-  padding: 6px 12px;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  transition: all 0.15s ease;
-}
-
-.sub-action-btn:hover {
-  background: var(--bg-subtle);
-  border-color: var(--border-card);
-}
-
-.sub-btn-icon {
-  font-size: 14px;
 }
 
 /* Главная карточка доходов смены */

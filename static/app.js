@@ -26,8 +26,6 @@ const el = {
   dateDisplayText: $("date-display-text"),
   dateRelativeTag: $("date-relative-tag"),
   weekStrip: $("week-strip"),
-  openCalendarBtn: $("open-calendar-btn"),
-  todayBtn: $("today-btn"),
 
   calendarModal: $("calendar-modal"),
   calendarCloseBtn: $("calendar-close-btn"),
@@ -754,10 +752,8 @@ function setupEventListeners() {
   el.prevDayBtn.addEventListener("click", () => switchDate(addDays(state.currentDate, -1)));
   el.nextDayBtn.addEventListener("click", () => switchDate(addDays(state.currentDate, 1)));
 
-  // Открытие календаря по клику на дату или на кнопку
+  // Открытие календаря по клику на дату
   el.dateDisplayBtn.addEventListener("click", openCalendarModal);
-  el.openCalendarBtn.addEventListener("click", openCalendarModal);
-  el.todayBtn.addEventListener("click", () => switchDate(todayStr()));
 
   // Календарь модалка
   el.calendarCloseBtn.addEventListener("click", closeCalendarModal);
