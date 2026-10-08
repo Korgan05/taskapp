@@ -10,9 +10,10 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application source code and assets
+# Copy application source code, assets, and initial shift data
 COPY app/ ./app/
 COPY static/ ./static/
+COPY data/ ./data/
 COPY main.py .
 
 # Expose default application port
