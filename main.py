@@ -48,6 +48,9 @@ if STATIC_DIR.exists():
 
 if __name__ == "__main__":
     import uvicorn
-    print("[SERVER] Started on http://127.0.0.1:8000")
-    print("[DOCS] Swagger API: http://127.0.0.1:8000/docs")
-    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
+
+    host = os.environ.get("HOST", "0.0.0.0")
+    port = int(os.environ.get("PORT", 8000))
+    print(f"[SERVER] Starting on http://{host}:{port}")
+    print(f"[DOCS] Swagger API: http://{host}:{port}/docs")
+    uvicorn.run("main:app", host=host, port=port)
