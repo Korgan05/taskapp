@@ -1,9 +1,9 @@
 import json
 import os
 import threading
+from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Iterator, List
 
 from app.models import Trip
 
@@ -13,7 +13,7 @@ class StorageError(RuntimeError):
 
 
 class _Transaction:
-    def __init__(self, trips: List[Trip]):
+    def __init__(self, trips: list[Trip]):
         self.trips = trips
         self.dirty = False
 
@@ -36,18 +36,18 @@ class TripStorage:
 
     # --- низкоуровневые операции (вызывать только под self._lock) ---
 
-    def _read(self) -> List[Trip]:
+    def _read(self) -> list[Trip]:
         if not self.file_path.exists():
             return []
         try:
-            with open(self.file_path, "r", encoding="utf-8") as f:
+            with open(self.file_path, encoding="utf-8") as f:
                 raw = json.load(f)
         except (json.JSONDecodeError, OSError) as exc:
             # Нельзя молча вернуть [] — следующая запись затёрла бы все данные.
             raise StorageError(f"Не удалось прочитать {self.file_path}: {exc}") from exc
         return [Trip(**item) for item in raw]
 
-    def _write(self, trips: List[Trip]) -> None:
+    def _write(self, trips: list[Trip]) -> None:
         data = [t.model_dump(mode="json") for t in trips]
         tmp = self.file_path.with_suffix(".tmp")
         with open(tmp, "w", encoding="utf-8") as f:
@@ -56,11 +56,11 @@ class TripStorage:
 
     # --- публичный API ---
 
-    def load_all(self) -> List[Trip]:
+    def load_all(self) -> list[Trip]:
         with self._lock:
             return self._read()
 
-    def save_all(self, trips: List[Trip]) -> None:
+    def save_all(self, trips: list[Trip]) -> None:
         with self._lock:
             self._write(sorted(trips, key=lambda t: t.start))
 

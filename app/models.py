@@ -1,7 +1,6 @@
 import uuid
 from datetime import datetime
 from enum import Enum
-from typing import Optional
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -41,7 +40,7 @@ class TripBase(BaseModel):
 
 
 class TripCreate(TripBase):
-    id: Optional[str] = Field(
+    id: str | None = Field(
         default=None,
         min_length=1,
         max_length=64,

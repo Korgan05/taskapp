@@ -1,9 +1,8 @@
-from datetime import date, datetime, timedelta, timezone
-from typing import List, Optional, Union
+from datetime import date, timedelta, timezone
 
 from app.models import DaySummary, PaymentBreakdown, PaymentMethod, Trip, TripCreate
 
-DayLike = Union[date, str]
+DayLike = date | str
 
 # Локальный часовой пояс водителя (Алматы, Казахстан, UTC+05:00)
 DRIVER_TZ = timezone(timedelta(hours=5))
@@ -35,12 +34,12 @@ class TripService:
         return start.date()
 
     @classmethod
-    def filter_by_date(cls, trips: List[Trip], day: DayLike, tz: timezone = DRIVER_TZ) -> List[Trip]:
+    def filter_by_date(cls, trips: list[Trip], day: DayLike, tz: timezone = DRIVER_TZ) -> list[Trip]:
         d = _as_date(day)
         return sorted((t for t in trips if cls.trip_day(t, tz) == d), key=lambda t: t.start)
 
     @classmethod
-    def calculate_summary(cls, trips: List[Trip], day: DayLike, tz: timezone = DRIVER_TZ) -> DaySummary:
+    def calculate_summary(cls, trips: list[Trip], day: DayLike, tz: timezone = DRIVER_TZ) -> DaySummary:
         d = _as_date(day)
         day_trips = cls.filter_by_date(trips, d, tz)
 
@@ -69,7 +68,7 @@ class TripService:
         )
 
     @classmethod
-    def find_existing(cls, trips: List[Trip], candidate: TripCreate) -> Optional[Trip]:
+    def find_existing(cls, trips: list[Trip], candidate: TripCreate) -> Trip | None:
         """
         Ищет уже сохранённую «ту же самую» поездку.
 
@@ -92,5 +91,5 @@ class TripService:
         return None
 
     @classmethod
-    def get_available_dates(cls, trips: List[Trip], tz: timezone = DRIVER_TZ) -> List[str]:
+    def get_available_dates(cls, trips: list[Trip], tz: timezone = DRIVER_TZ) -> list[str]:
         return sorted({cls.trip_day(t, tz).isoformat() for t in trips})

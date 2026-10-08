@@ -1,5 +1,4 @@
 from datetime import date
-from typing import List, Optional
 
 from fastapi import APIRouter, Header, HTTPException, Query, Response, status
 
@@ -13,11 +12,11 @@ DateQuery = Query(..., alias="date", description="Дата в формате YYY
 def get_routes(storage: TripStorage) -> APIRouter:
     r = APIRouter(prefix="/api", tags=["Trips & Shifts"])
 
-    @r.get("/dates", response_model=List[str], summary="Даты, за которые есть поездки")
+    @r.get("/dates", response_model=list[str], summary="Даты, за которые есть поездки")
     def list_available_dates():
         return TripService.get_available_dates(storage.load_all())
 
-    @r.get("/trips", response_model=List[Trip], summary="Список поездок за день")
+    @r.get("/trips", response_model=list[Trip], summary="Список поездок за день")
     def get_trips(day: date = DateQuery):
         return TripService.filter_by_date(storage.load_all(), day)
 
@@ -48,7 +47,7 @@ def get_routes(storage: TripStorage) -> APIRouter:
     def add_trip(
         trip_data: TripCreate,
         response: Response,
-        idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key", description="Ключ идемпотентности"),
+        idempotency_key: str | None = Header(None, alias="Idempotency-Key", description="Ключ идемпотентности"),
     ):
         # Если передан стандартный HTTP-заголовок Idempotency-Key и id в теле не указан — связываем их
         if idempotency_key and not trip_data.id:
@@ -66,7 +65,7 @@ def get_routes(storage: TripStorage) -> APIRouter:
                         "message": f"ID «{conflict.existing.id}» уже занят поездкой с другими данными",
                         "duplicate_id": conflict.existing.id,
                     },
-                )
+                ) from conflict
 
             if existing is not None:
                 response.status_code = status.HTTP_200_OK

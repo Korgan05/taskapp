@@ -192,8 +192,7 @@ def test_corrupted_file_is_not_silently_overwritten(tmp_path):
     path.write_text("[{ broken json", encoding="utf-8")
     storage = TripStorage(path)
 
-    with pytest.raises(StorageError):
-        with storage.transaction() as tx:
-            tx.dirty = True
+    with pytest.raises(StorageError), storage.transaction() as tx:
+        tx.dirty = True
 
     assert path.read_text(encoding="utf-8") == "[{ broken json"
